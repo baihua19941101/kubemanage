@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { useEffect } from "react";
 import { useClusterStore } from "../stores/useClusterStore";
+import { useAuthStore } from "../stores/useAuthStore";
 
 export default function ClusterPage() {
   const clusters = useClusterStore((s) => s.clusters);
@@ -17,6 +18,7 @@ export default function ClusterPage() {
   const switching = useClusterStore((s) => s.switching);
   const load = useClusterStore((s) => s.load);
   const switchCluster = useClusterStore((s) => s.switchCluster);
+  const canWorkloadWrite = useAuthStore((s) => s.canWorkloadWrite);
 
   useEffect(() => {
     void load();
@@ -50,7 +52,11 @@ export default function ClusterPage() {
               <Button
                 size="small"
                 variant="contained"
-                disabled={current === cluster.name || switching === cluster.name}
+                disabled={
+                  !canWorkloadWrite() ||
+                  current === cluster.name ||
+                  switching === cluster.name
+                }
                 onClick={() => {
                   void switchCluster(cluster.name);
                 }}

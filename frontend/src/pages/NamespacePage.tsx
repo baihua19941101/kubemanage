@@ -14,6 +14,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useNamespaceStore } from "../stores/useNamespaceStore";
 
 export default function NamespacePage() {
@@ -24,6 +25,7 @@ export default function NamespacePage() {
   const create = useNamespaceStore((s) => s.create);
   const remove = useNamespaceStore((s) => s.remove);
   const fetchYaml = useNamespaceStore((s) => s.fetchYaml);
+  const canNamespaceWrite = useAuthStore((s) => s.canNamespaceWrite);
 
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -42,7 +44,7 @@ export default function NamespacePage() {
     <Stack spacing={2}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="h5">名称空间管理（MVP）</Typography>
-        <Button variant="contained" onClick={() => setOpen(true)}>
+        <Button variant="contained" onClick={() => setOpen(true)} disabled={!canNamespaceWrite()}>
           新建名称空间
         </Button>
       </Stack>
@@ -77,6 +79,7 @@ export default function NamespacePage() {
               <Button
                 size="small"
                 color="error"
+                disabled={!canNamespaceWrite()}
                 onClick={async () => {
                   if (window.confirm(`确认删除名称空间 ${ns.name} ?`)) {
                     await remove(ns.name);
@@ -106,6 +109,7 @@ export default function NamespacePage() {
           <Button onClick={() => setOpen(false)}>取消</Button>
           <Button
             variant="contained"
+            disabled={!canNamespaceWrite()}
             onClick={async () => {
               await create(newName);
               setNewName("");

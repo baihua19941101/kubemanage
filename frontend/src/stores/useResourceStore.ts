@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 
 type ServiceItem = {
   name: string;
@@ -44,9 +45,9 @@ export const useResourceStore = create<ResourceState>((set) => ({
     set({ loading: true, error: "" });
     try {
       const [sResp, cResp, secResp] = await Promise.all([
-        fetch("/api/v1/services"),
-        fetch("/api/v1/configmaps"),
-        fetch("/api/v1/secrets")
+        apiFetch("/api/v1/services"),
+        apiFetch("/api/v1/configmaps"),
+        apiFetch("/api/v1/secrets")
       ]);
       if (!sResp.ok || !cResp.ok || !secResp.ok) {
         throw new Error("加载服务与配置资源失败");

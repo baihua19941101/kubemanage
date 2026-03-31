@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 
 type NamespaceItem = {
   name: string;
@@ -23,7 +24,7 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
   load: async () => {
     set({ loading: true, error: "" });
     try {
-      const resp = await fetch("/api/v1/namespaces");
+      const resp = await apiFetch("/api/v1/namespaces");
       if (!resp.ok) {
         throw new Error("获取名称空间列表失败");
       }
@@ -43,7 +44,7 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
     }
     set({ error: "" });
     try {
-      const resp = await fetch("/api/v1/namespaces", {
+      const resp = await apiFetch("/api/v1/namespaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed })
@@ -61,7 +62,7 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
   remove: async (name: string) => {
     try {
       set({ error: "" });
-      const resp = await fetch(`/api/v1/namespaces/${name}`, {
+      const resp = await apiFetch(`/api/v1/namespaces/${name}`, {
         method: "DELETE"
       });
       if (!resp.ok) {
@@ -75,7 +76,7 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
     }
   },
   fetchYaml: async (name: string) => {
-    const resp = await fetch(`/api/v1/namespaces/${name}/yaml`);
+    const resp = await apiFetch(`/api/v1/namespaces/${name}/yaml`);
     if (!resp.ok) {
       throw new Error("获取 YAML 失败");
     }

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 
 type Cluster = {
   name: string;
@@ -24,7 +25,7 @@ export const useClusterStore = create<ClusterState>((set) => ({
   load: async () => {
     set({ loading: true });
     try {
-      const resp = await fetch("/api/v1/clusters");
+      const resp = await apiFetch("/api/v1/clusters");
       if (!resp.ok) {
         throw new Error("fetch clusters failed");
       }
@@ -37,7 +38,7 @@ export const useClusterStore = create<ClusterState>((set) => ({
   switchCluster: async (name: string) => {
     set({ switching: name });
     try {
-      const resp = await fetch("/api/v1/clusters/switch", {
+      const resp = await apiFetch("/api/v1/clusters/switch", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
