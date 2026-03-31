@@ -1,15 +1,20 @@
 package server
 
 import (
+	"log"
+
+	"kubeManage/backend/internal/config"
 	"kubeManage/backend/internal/handlers"
 	"kubeManage/backend/internal/infra"
+	"kubeManage/backend/internal/kube"
 	"kubeManage/backend/internal/middleware"
 	"kubeManage/backend/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"k8s.io/client-go/kubernetes"
 )
 
-func NewRouter(store *infra.Store) *gin.Engine {
+func NewRouter(store *infra.Store, cfg config.Config) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
@@ -17,12 +22,14 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	auditSvc := service.NewAuditService()
 	r.Use(middleware.InjectRole(authSvc))
 
-	clusterSvc := service.NewClusterService(nil)
+	k8sClient, liveMode := resolveK8sClient(cfg)
+
+	clusterSvc := service.NewClusterService(nil, k8sClient, liveMode, cfg.Cluster)
 	if store != nil {
-		clusterSvc = service.NewClusterService(store.Redis)
+		clusterSvc = service.NewClusterService(store.Redis, k8sClient, liveMode, cfg.Cluster)
 	}
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
-	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService())
+	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService(k8sClient, liveMode))
 	workloadHandler := handlers.NewWorkloadHandler(service.NewWorkloadService())
 	resourceHandler := handlers.NewResourceHandler(service.NewResourceService())
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -63,4 +70,16 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	}
 
 	return r
+}
+
+func resolveK8sClient(cfg config.Config) (kubernetes.Interface, bool) {
+	client, err := kube.NewClient(cfg)
+	if err != nil {
+		log.Printf("init k8s client failed, fallback to mock mode: %v", err)
+		return nil, false
+	}
+	if client == nil {
+		return nil, false
+	}
+	return client, true
 }

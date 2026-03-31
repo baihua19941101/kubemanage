@@ -60,6 +60,9 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - `KM_REDIS_ADDR`
 - `KM_REDIS_PASS`
 - `KM_REDIS_DB`
+- `KM_K8S_MODE`：`mock` 或 `live`（默认 `mock`）
+- `KM_KUBECONFIG`：Kubeconfig 路径（`live` 模式可选；不设置时尝试 `KUBECONFIG` 或 InCluster）
+- `KM_CLUSTER_NAME`：集群展示名称（默认 `live-cluster`）
 
 ```bash
 cd backend
@@ -67,6 +70,17 @@ go run ./cmd/server
 ```
 
 默认监听：`http://localhost:8080`
+
+启用真实 K8s 数据读取（P201）示例：
+
+```bash
+cd backend
+KM_K8S_MODE=live KM_KUBECONFIG=/path/to/kubeconfig go run ./cmd/server
+```
+
+说明：
+- `live` 模式当前优先接入“集群列表/名称空间读写”真实 API
+- 若 `live` 初始化失败会自动降级到 `mock` 模式并输出日志
 
 ### 启动前端
 
@@ -385,7 +399,7 @@ BASE_URL=http://127.0.0.1:8080 bash scripts/mvp_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第二阶段（规划完成）`
-- 当前任务：`第二阶段任务 1：K8s 真实集群数据接入`
-- 当前状态：`待开始`
+- 当前阶段：`第二阶段（进行中）`
+- 当前任务：`P201：K8s 真实集群数据接入`
+- 当前状态：`待验收`
 - 下一任务：`第二阶段任务 2：工作负载扩展`

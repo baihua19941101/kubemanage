@@ -11,6 +11,9 @@ type Config struct {
 	RedisAddr  string
 	RedisPass  string
 	RedisDB    int
+	K8sMode    string
+	Kubeconfig string
+	Cluster    string
 }
 
 func Load() Config {
@@ -19,6 +22,9 @@ func Load() Config {
 	redisAddr := getenv("KM_REDIS_ADDR", "localhost:6379")
 	redisPass := getenv("KM_REDIS_PASS", "")
 	redisDB := getenvInt("KM_REDIS_DB", 0)
+	k8sMode := getenv("KM_K8S_MODE", "mock")
+	kubeconfig := getenv("KM_KUBECONFIG", "")
+	cluster := getenv("KM_CLUSTER_NAME", "live-cluster")
 
 	return Config{
 		ListenAddr: listenAddr,
@@ -26,6 +32,9 @@ func Load() Config {
 		RedisAddr:  redisAddr,
 		RedisPass:  redisPass,
 		RedisDB:    redisDB,
+		K8sMode:    k8sMode,
+		Kubeconfig: kubeconfig,
+		Cluster:    cluster,
 	}
 }
 
