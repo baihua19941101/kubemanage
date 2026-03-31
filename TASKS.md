@@ -15,8 +15,8 @@
 | T004 | 名称空间管理 MVP | 已完成 | 已实现列表、创建、删除、YAML 查看/下载 |
 | T005 | Deployment/Pod MVP | 已完成 | 已实现列表、详情、日志、YAML 编辑 |
 | T006 | Service/ConfigMap/Secret MVP | 已完成 | 已实现列表、详情、Secret 脱敏 |
-| T007 | 权限与审计 MVP | 待验收 | 已实现最小 RBAC、关键写操作审计 |
-| T008 | MVP 联调与验收测试 | 待开始 | 核心流程、权限、审计验证 |
+| T007 | 权限与审计 MVP | 已完成 | 已实现最小 RBAC、关键写操作审计 |
+| T008 | MVP 联调与验收测试 | 待验收 | 已完成联调脚本与核心流程验收检查 |
 | T009 | 启动命令整理并写入 README | 已完成 | 已补充前后端安装、启动、联调与验证命令 |
 | T010 | 后端接入 MySQL/Redis 启动配置 | 已完成 | 已增加配置项、启动连接校验与文档说明 |
 | T011 | T003 前置：数据库备份与功能分支创建 | 已完成 | 已备份 kubemanage，已创建 feature/t003-cluster-mvp |
@@ -24,6 +24,7 @@
 | T013 | T005 前置：数据库备份与功能分支创建 | 已完成 | 已备份 kubemanage，已创建 feature/t005-workload-mvp |
 | T014 | T006 前置：数据库备份与功能分支创建 | 已完成 | 已备份 kubemanage，已创建 feature/t006-service-config-secret-mvp |
 | T015 | T007 前置：数据库备份与功能分支创建 | 已完成 | 已备份 kubemanage，已创建 feature/t007-auth-audit-mvp |
+| T016 | T008 前置：数据库备份与功能分支创建 | 已完成 | 已备份 kubemanage，已创建 feature/t008-mvp-integration-qa |
 
 ## 完成记录
 
@@ -40,3 +41,5 @@
 - 2026-03-31：完成 T014（T006 前置：数据库备份与功能分支创建）
 - 2026-03-31：完成 T006（Service/ConfigMap/Secret MVP，含后端接口与前端页面）
 - 2026-03-31：完成 T015（T007 前置：数据库备份与功能分支创建）
+- 2026-03-31：完成 T007（权限与审计 MVP，含最小 RBAC 与写操作审计）
+- 2026-03-31：完成 T016（T008 前置：数据库备份与功能分支创建）

@@ -219,6 +219,18 @@ curl -X DELETE -H "X-User-Role: viewer" \
 curl -H "X-User-Role: admin" http://localhost:8080/api/v1/audits
 ```
 
+一键执行 MVP 联调验收脚本：
+
+```bash
+bash scripts/mvp_smoke_test.sh
+```
+
+可选自定义后端地址：
+
+```bash
+BASE_URL=http://127.0.0.1:8080 bash scripts/mvp_smoke_test.sh
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -338,6 +350,6 @@ curl -H "X-User-Role: admin" http://localhost:8080/api/v1/audits
 ## 任务状态
 
 - 当前阶段：`第一阶段 MVP`
-- 当前任务：`权限与审计 MVP（任务 6）`
+- 当前任务：`MVP 联调与验收测试（任务 7）`
 - 当前状态：`待验收`
-- 下一任务：`MVP 联调与验收测试（任务 7）`
+- 下一任务：`第二阶段规划`
