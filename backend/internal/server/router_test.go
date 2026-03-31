@@ -125,3 +125,35 @@ func TestWorkloads(t *testing.T) {
 		t.Fatalf("get pod logs failed: %d body=%s", podLogW.Code, podLogW.Body.String())
 	}
 }
+
+func TestResourceEndpoints(t *testing.T) {
+	r := NewRouter(nil)
+
+	req1, _ := http.NewRequest(http.MethodGet, "/api/v1/services", nil)
+	w1 := httptest.NewRecorder()
+	r.ServeHTTP(w1, req1)
+	if w1.Code != http.StatusOK {
+		t.Fatalf("list services failed: %d body=%s", w1.Code, w1.Body.String())
+	}
+
+	req2, _ := http.NewRequest(http.MethodGet, "/api/v1/configmaps", nil)
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("list configmaps failed: %d body=%s", w2.Code, w2.Body.String())
+	}
+
+	req3, _ := http.NewRequest(http.MethodGet, "/api/v1/secrets", nil)
+	w3 := httptest.NewRecorder()
+	r.ServeHTTP(w3, req3)
+	if w3.Code != http.StatusOK {
+		t.Fatalf("list secrets failed: %d body=%s", w3.Code, w3.Body.String())
+	}
+
+	req4, _ := http.NewRequest(http.MethodGet, "/api/v1/secrets/web-api-secret", nil)
+	w4 := httptest.NewRecorder()
+	r.ServeHTTP(w4, req4)
+	if w4.Code != http.StatusOK {
+		t.Fatalf("get secret failed: %d body=%s", w4.Code, w4.Body.String())
+	}
+}
