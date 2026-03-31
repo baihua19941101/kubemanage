@@ -182,6 +182,24 @@ curl http://localhost:8080/api/v1/pods
 curl http://localhost:8080/api/v1/pods/web-api-7bf59f6f9c-abcde/logs
 ```
 
+Service 列表：
+
+```bash
+curl http://localhost:8080/api/v1/services
+```
+
+ConfigMap 列表：
+
+```bash
+curl http://localhost:8080/api/v1/configmaps
+```
+
+Secret 列表（脱敏）：
+
+```bash
+curl http://localhost:8080/api/v1/secrets
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -301,6 +319,6 @@ curl http://localhost:8080/api/v1/pods/web-api-7bf59f6f9c-abcde/logs
 ## 任务状态
 
 - 当前阶段：`第一阶段 MVP`
-- 当前任务：`Deployment / Pod MVP（任务 4）`
+- 当前任务：`Service / ConfigMap / Secret MVP（任务 5）`
 - 当前状态：`待验收`
-- 下一任务：`Service / ConfigMap / Secret MVP（任务 5）`
+- 下一任务：`权限与审计 MVP（任务 6）`

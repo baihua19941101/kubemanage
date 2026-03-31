@@ -19,6 +19,7 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
 	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService())
 	workloadHandler := handlers.NewWorkloadHandler(service.NewWorkloadService())
+	resourceHandler := handlers.NewResourceHandler(service.NewResourceService())
 
 	api := r.Group("/api/v1")
 	{
@@ -40,6 +41,12 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		api.GET("/pods/:name/yaml", workloadHandler.GetPodYAML)
 		api.PUT("/pods/:name/yaml", workloadHandler.UpdatePodYAML)
 		api.GET("/pods/:name/logs", workloadHandler.GetPodLogs)
+		api.GET("/services", resourceHandler.ListServices)
+		api.GET("/services/:name", resourceHandler.GetService)
+		api.GET("/configmaps", resourceHandler.ListConfigMaps)
+		api.GET("/configmaps/:name", resourceHandler.GetConfigMap)
+		api.GET("/secrets", resourceHandler.ListSecrets)
+		api.GET("/secrets/:name", resourceHandler.GetSecret)
 	}
 
 	return r
