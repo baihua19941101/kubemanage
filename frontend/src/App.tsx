@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import ClusterPage from "./pages/ClusterPage";
 import NamespacePage from "./pages/NamespacePage";
+import WorkloadPage from "./pages/WorkloadPage";
 
 export default function App() {
   const [tab, setTab] = useState("clusters");
@@ -27,8 +28,11 @@ export default function App() {
         <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 2 }}>
           <Tab label="集群管理" value="clusters" />
           <Tab label="名称空间管理" value="namespaces" />
+          <Tab label="工作负载管理" value="workloads" />
         </Tabs>
-        {tab === "clusters" ? <ClusterPage /> : <NamespacePage />}
+        {tab === "clusters" && <ClusterPage />}
+        {tab === "namespaces" && <NamespacePage />}
+        {tab === "workloads" && <WorkloadPage />}
       </Container>
     </Box>
   );

@@ -85,3 +85,43 @@ func TestNamespaces(t *testing.T) {
 		t.Fatalf("delete namespace failed: %d body=%s", delW.Code, delW.Body.String())
 	}
 }
+
+func TestWorkloads(t *testing.T) {
+	r := NewRouter(nil)
+
+	deployListReq, _ := http.NewRequest(http.MethodGet, "/api/v1/deployments", nil)
+	deployListW := httptest.NewRecorder()
+	r.ServeHTTP(deployListW, deployListReq)
+	if deployListW.Code != http.StatusOK {
+		t.Fatalf("list deployments failed: %d body=%s", deployListW.Code, deployListW.Body.String())
+	}
+
+	deployYAMLReq, _ := http.NewRequest(http.MethodGet, "/api/v1/deployments/web-api/yaml", nil)
+	deployYAMLW := httptest.NewRecorder()
+	r.ServeHTTP(deployYAMLW, deployYAMLReq)
+	if deployYAMLW.Code != http.StatusOK {
+		t.Fatalf("get deployment yaml failed: %d body=%s", deployYAMLW.Code, deployYAMLW.Body.String())
+	}
+
+	updateDeployReq, _ := http.NewRequest(http.MethodPut, "/api/v1/deployments/web-api/yaml", bytes.NewBufferString(`{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}`))
+	updateDeployReq.Header.Set("Content-Type", "application/json")
+	updateDeployW := httptest.NewRecorder()
+	r.ServeHTTP(updateDeployW, updateDeployReq)
+	if updateDeployW.Code != http.StatusNoContent {
+		t.Fatalf("update deployment yaml failed: %d body=%s", updateDeployW.Code, updateDeployW.Body.String())
+	}
+
+	podListReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods", nil)
+	podListW := httptest.NewRecorder()
+	r.ServeHTTP(podListW, podListReq)
+	if podListW.Code != http.StatusOK {
+		t.Fatalf("list pods failed: %d body=%s", podListW.Code, podListW.Body.String())
+	}
+
+	podLogReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods/web-api-7bf59f6f9c-abcde/logs", nil)
+	podLogW := httptest.NewRecorder()
+	r.ServeHTTP(podLogW, podLogReq)
+	if podLogW.Code != http.StatusOK {
+		t.Fatalf("get pod logs failed: %d body=%s", podLogW.Code, podLogW.Body.String())
+	}
+}

@@ -18,6 +18,7 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	}
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
 	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService())
+	workloadHandler := handlers.NewWorkloadHandler(service.NewWorkloadService())
 
 	api := r.Group("/api/v1")
 	{
@@ -30,6 +31,15 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		api.DELETE("/namespaces/:name", namespaceHandler.DeleteNamespace)
 		api.GET("/namespaces/:name/yaml", namespaceHandler.GetNamespaceYAML)
 		api.GET("/namespaces/:name/yaml/download", namespaceHandler.DownloadNamespaceYAML)
+		api.GET("/deployments", workloadHandler.ListDeployments)
+		api.GET("/deployments/:name", workloadHandler.GetDeployment)
+		api.GET("/deployments/:name/yaml", workloadHandler.GetDeploymentYAML)
+		api.PUT("/deployments/:name/yaml", workloadHandler.UpdateDeploymentYAML)
+		api.GET("/pods", workloadHandler.ListPods)
+		api.GET("/pods/:name", workloadHandler.GetPod)
+		api.GET("/pods/:name/yaml", workloadHandler.GetPodYAML)
+		api.PUT("/pods/:name/yaml", workloadHandler.UpdatePodYAML)
+		api.GET("/pods/:name/logs", workloadHandler.GetPodLogs)
 	}
 
 	return r
