@@ -12,6 +12,7 @@ import ClusterPage from "./pages/ClusterPage";
 import NamespacePage from "./pages/NamespacePage";
 import WorkloadPage from "./pages/WorkloadPage";
 import ResourcePage from "./pages/ResourcePage";
+import AuthAuditPage from "./pages/AuthAuditPage";
 
 export default function App() {
   const [tab, setTab] = useState("clusters");
@@ -31,11 +32,13 @@ export default function App() {
           <Tab label="名称空间管理" value="namespaces" />
           <Tab label="工作负载管理" value="workloads" />
           <Tab label="服务与配置" value="resources" />
+          <Tab label="权限与审计" value="auth-audit" />
         </Tabs>
         {tab === "clusters" && <ClusterPage />}
         {tab === "namespaces" && <NamespacePage />}
         {tab === "workloads" && <WorkloadPage />}
         {tab === "resources" && <ResourcePage />}
+        {tab === "auth-audit" && <AuthAuditPage />}
       </Container>
     </Box>
   );

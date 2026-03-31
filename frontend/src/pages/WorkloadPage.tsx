@@ -14,6 +14,7 @@ import {
   Typography
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useWorkloadStore } from "../stores/useWorkloadStore";
 
 type EditorMode = "deployment" | "pod" | "";
@@ -29,6 +30,7 @@ export default function WorkloadPage() {
   const getPodYAML = useWorkloadStore((s) => s.getPodYAML);
   const savePodYAML = useWorkloadStore((s) => s.savePodYAML);
   const getPodLogs = useWorkloadStore((s) => s.getPodLogs);
+  const canWorkloadWrite = useAuthStore((s) => s.canWorkloadWrite);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("");
@@ -141,6 +143,7 @@ export default function WorkloadPage() {
           <Button onClick={() => setEditorOpen(false)}>关闭</Button>
           <Button
             variant="contained"
+            disabled={!canWorkloadWrite()}
             onClick={async () => {
               const ok =
                 editorMode === "deployment"

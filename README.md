@@ -200,6 +200,25 @@ Secret 列表（脱敏）：
 curl http://localhost:8080/api/v1/secrets
 ```
 
+查看当前角色信息：
+
+```bash
+curl -H "X-User-Role: admin" http://localhost:8080/api/v1/auth/me
+```
+
+以 viewer 角色尝试删除名称空间（应返回 403）：
+
+```bash
+curl -X DELETE -H "X-User-Role: viewer" \
+  http://localhost:8080/api/v1/namespaces/default
+```
+
+以 admin 角色查看审计日志：
+
+```bash
+curl -H "X-User-Role: admin" http://localhost:8080/api/v1/audits
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -319,6 +338,6 @@ curl http://localhost:8080/api/v1/secrets
 ## 任务状态
 
 - 当前阶段：`第一阶段 MVP`
-- 当前任务：`Service / ConfigMap / Secret MVP（任务 5）`
+- 当前任务：`权限与审计 MVP（任务 6）`
 - 当前状态：`待验收`
-- 下一任务：`权限与审计 MVP（任务 6）`
+- 下一任务：`MVP 联调与验收测试（任务 7）`

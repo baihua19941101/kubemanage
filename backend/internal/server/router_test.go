@@ -7,6 +7,19 @@ import (
 	"testing"
 )
 
+func requestWithRole(method, path string, body string, role string) *http.Request {
+	var req *http.Request
+	if body != "" {
+		req, _ = http.NewRequest(method, path, bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, _ = http.NewRequest(method, path, nil)
+	}
+	req.Header.Set("X-User-Role", role)
+	req.Header.Set("X-User", "tester")
+	return req
+}
+
 func TestHealthz(t *testing.T) {
 	r := NewRouter(nil)
 	req, err := http.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
@@ -39,11 +52,7 @@ func TestClusters(t *testing.T) {
 
 func TestSwitchCluster(t *testing.T) {
 	r := NewRouter(nil)
-	req, err := http.NewRequest(http.MethodPost, "/api/v1/clusters/switch", bytes.NewBufferString(`{"name":"staging-cluster"}`))
-	if err != nil {
-		t.Fatalf("build request failed: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	req := requestWithRole(http.MethodPost, "/api/v1/clusters/switch", `{"name":"staging-cluster"}`, "admin")
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -65,6 +74,7 @@ func TestNamespaces(t *testing.T) {
 
 	createReq, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces", bytes.NewBufferString(`{"name":"qa"}`))
 	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("X-User-Role", "admin")
 	createW := httptest.NewRecorder()
 	r.ServeHTTP(createW, createReq)
 	if createW.Code != http.StatusCreated {
@@ -79,6 +89,7 @@ func TestNamespaces(t *testing.T) {
 	}
 
 	delReq, _ := http.NewRequest(http.MethodDelete, "/api/v1/namespaces/qa", nil)
+	delReq.Header.Set("X-User-Role", "admin")
 	delW := httptest.NewRecorder()
 	r.ServeHTTP(delW, delReq)
 	if delW.Code != http.StatusNoContent {
@@ -103,8 +114,7 @@ func TestWorkloads(t *testing.T) {
 		t.Fatalf("get deployment yaml failed: %d body=%s", deployYAMLW.Code, deployYAMLW.Body.String())
 	}
 
-	updateDeployReq, _ := http.NewRequest(http.MethodPut, "/api/v1/deployments/web-api/yaml", bytes.NewBufferString(`{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}`))
-	updateDeployReq.Header.Set("Content-Type", "application/json")
+	updateDeployReq := requestWithRole(http.MethodPut, "/api/v1/deployments/web-api/yaml", `{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}`, "operator")
 	updateDeployW := httptest.NewRecorder()
 	r.ServeHTTP(updateDeployW, updateDeployReq)
 	if updateDeployW.Code != http.StatusNoContent {
@@ -155,5 +165,23 @@ func TestResourceEndpoints(t *testing.T) {
 	r.ServeHTTP(w4, req4)
 	if w4.Code != http.StatusOK {
 		t.Fatalf("get secret failed: %d body=%s", w4.Code, w4.Body.String())
+	}
+}
+
+func TestRBACAndAudit(t *testing.T) {
+	r := NewRouter(nil)
+
+	denyReq := requestWithRole(http.MethodDelete, "/api/v1/namespaces/default", "", "viewer")
+	denyW := httptest.NewRecorder()
+	r.ServeHTTP(denyW, denyReq)
+	if denyW.Code != http.StatusForbidden {
+		t.Fatalf("viewer should be forbidden, got %d", denyW.Code)
+	}
+
+	auditReq := requestWithRole(http.MethodGet, "/api/v1/audits", "", "admin")
+	auditW := httptest.NewRecorder()
+	r.ServeHTTP(auditW, auditReq)
+	if auditW.Code != http.StatusOK {
+		t.Fatalf("admin audit read failed: %d body=%s", auditW.Code, auditW.Body.String())
 	}
 }

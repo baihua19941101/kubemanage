@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiFetch } from "../lib/api";
 
 type Deployment = {
   name: string;
@@ -42,8 +43,8 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     set({ loading: true, error: "" });
     try {
       const [dResp, pResp] = await Promise.all([
-        fetch("/api/v1/deployments"),
-        fetch("/api/v1/pods")
+        apiFetch("/api/v1/deployments"),
+        apiFetch("/api/v1/pods")
       ]);
       if (!dResp.ok || !pResp.ok) {
         throw new Error("加载工作负载失败");
@@ -58,14 +59,14 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     }
   },
   getDeploymentYAML: async (name: string) => {
-    const resp = await fetch(`/api/v1/deployments/${name}/yaml`);
+    const resp = await apiFetch(`/api/v1/deployments/${name}/yaml`);
     if (!resp.ok) {
       throw new Error("获取 Deployment YAML 失败");
     }
     return resp.text();
   },
   saveDeploymentYAML: async (name: string, yaml: string) => {
-    const resp = await fetch(`/api/v1/deployments/${name}/yaml`, {
+    const resp = await apiFetch(`/api/v1/deployments/${name}/yaml`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ yaml })
@@ -73,14 +74,14 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.ok;
   },
   getPodYAML: async (name: string) => {
-    const resp = await fetch(`/api/v1/pods/${name}/yaml`);
+    const resp = await apiFetch(`/api/v1/pods/${name}/yaml`);
     if (!resp.ok) {
       throw new Error("获取 Pod YAML 失败");
     }
     return resp.text();
   },
   savePodYAML: async (name: string, yaml: string) => {
-    const resp = await fetch(`/api/v1/pods/${name}/yaml`, {
+    const resp = await apiFetch(`/api/v1/pods/${name}/yaml`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ yaml })
@@ -88,7 +89,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.ok;
   },
   getPodLogs: async (name: string) => {
-    const resp = await fetch(`/api/v1/pods/${name}/logs`);
+    const resp = await apiFetch(`/api/v1/pods/${name}/logs`);
     if (!resp.ok) {
       throw new Error("获取 Pod 日志失败");
     }
