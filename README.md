@@ -118,6 +118,38 @@ curl -X POST http://localhost:8080/api/v1/clusters/switch \
   -d '{"name":"staging-cluster"}'
 ```
 
+名称空间列表：
+
+```bash
+curl http://localhost:8080/api/v1/namespaces
+```
+
+创建名称空间：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/namespaces \
+  -H "Content-Type: application/json" \
+  -d '{"name":"qa"}'
+```
+
+查看名称空间 YAML：
+
+```bash
+curl http://localhost:8080/api/v1/namespaces/qa/yaml
+```
+
+下载名称空间 YAML：
+
+```bash
+curl -OJ http://localhost:8080/api/v1/namespaces/qa/yaml/download
+```
+
+删除名称空间：
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/namespaces/qa
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -237,6 +269,6 @@ curl -X POST http://localhost:8080/api/v1/clusters/switch \
 ## 任务状态
 
 - 当前阶段：`第一阶段 MVP`
-- 当前任务：`集群管理 MVP（任务 2）`
-- 当前状态：`已完成`
-- 下一任务：`名称空间 MVP（任务 3）`
+- 当前任务：`名称空间 MVP（任务 3）`
+- 当前状态：`待验收`
+- 下一任务：`Deployment / Pod MVP（任务 4）`

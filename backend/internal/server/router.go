@@ -17,6 +17,7 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		clusterSvc = service.NewClusterService(store.Redis)
 	}
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
+	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService())
 
 	api := r.Group("/api/v1")
 	{
@@ -24,6 +25,11 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		api.GET("/clusters", clusterHandler.ListClusters)
 		api.GET("/clusters/current", clusterHandler.GetCurrentCluster)
 		api.POST("/clusters/switch", clusterHandler.SwitchCluster)
+		api.GET("/namespaces", namespaceHandler.ListNamespaces)
+		api.POST("/namespaces", namespaceHandler.CreateNamespace)
+		api.DELETE("/namespaces/:name", namespaceHandler.DeleteNamespace)
+		api.GET("/namespaces/:name/yaml", namespaceHandler.GetNamespaceYAML)
+		api.GET("/namespaces/:name/yaml/download", namespaceHandler.DownloadNamespaceYAML)
 	}
 
 	return r
