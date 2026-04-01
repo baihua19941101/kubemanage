@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第六阶段（P601 已完成）
+- 阶段：第七阶段（P701 已完成）
 - 更新时间：2026-04-01
 
 ## 任务列表
@@ -42,6 +42,7 @@
 | P402 | 第四阶段任务2：真实终端 exec 链路打通 | 已完成 | 已完成会话管理、WebSocket/exec 桥接、安全校验与真实集群 e2e 验收 |
 | P501 | 第五阶段任务1：账号认证与用户体系 | 已完成 | 已完成账号密码认证闭环、管理员创建用户、Bearer 优先鉴权与前端登录态接入 |
 | P601 | 第六阶段任务1：用户管理增强 | 已完成 | 已完成用户列表、用户启停、重置密码、前端页面改造与冒烟验收 |
+| P701 | 第七阶段任务1：细粒度授权基础能力 | 已完成 | 已完成用户角色与授权范围在线编辑、前端交互与冒烟验收 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -144,6 +145,11 @@
 | T112 | P601-B：前端用户管理页面改造 | 已完成 | AuthAuditPage 已升级为“用户管理 + 审计日志”双区块页面 |
 | T113 | P601 收口：前端构建链路修复 | 已完成 | 已恢复 AuthAuditPage 路由链路，frontend `npm run build` 通过 |
 | T114 | P601-C：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p601_user_management_smoke_test.sh |
+| T115 | P701 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p701-fine-grained-auth，已备份 backups/kubemanage-20260401-214449-p701.sql |
+| T116 | P701-A：README/TASKS 计划与状态同步 | 已完成 | 已同步第七阶段范围、拆分与当前状态（进行中） |
+| T117 | P701-B：后端用户授权编辑接口 | 已完成 | 已新增 PATCH /auth/users/:username，支持角色与授权范围更新 |
+| T118 | P701-C：前端用户授权编辑交互 | 已完成 | 已新增编辑授权弹窗并接入用户列表刷新 |
+| T119 | P701-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p701_fine_grained_auth_smoke_test.sh |
 
 ## 完成记录
 
@@ -314,3 +320,10 @@
 - 2026-04-01：完成 T113（恢复 frontend/src/pages/AuthAuditPage.tsx，前端构建恢复通过）
 - 2026-04-01：完成 T114（P601-C：go test ./...、npm run build、scripts/p601_user_management_smoke_test.sh 通过）
 - 2026-04-01：完成 P601（用户管理增强交付并验收通过）
+- 2026-04-01：完成 T115（P701 前置：创建 feature/p701-fine-grained-auth，并完成数据库备份 backups/kubemanage-20260401-214449-p701.sql）
+- 2026-04-01：完成 T116（P701：README/TASKS 同步第七阶段范围、拆分与状态）
+- 2026-04-01：启动 T117（P701-B：后端用户授权编辑接口）
+- 2026-04-01：完成 T117（新增 PATCH /api/v1/auth/users/:username，支持角色与授权范围编辑）
+- 2026-04-01：完成 T118（前端用户管理页新增“编辑授权”弹窗与提交流程）
+- 2026-04-01：完成 T119（go test ./...、npm run build、scripts/p701_fine_grained_auth_smoke_test.sh 通过）
+- 2026-04-01：完成 P701（细粒度授权基础能力交付并验收通过）

@@ -456,6 +456,13 @@ func TestAuthUserManagement(t *testing.T) {
 		t.Fatalf("update user status should return 503 when auth db disabled: %d body=%s", disableW.Code, disableW.Body.String())
 	}
 
+	updateProfileReq := requestWithRole(http.MethodPatch, "/api/v1/auth/users/p601-user", `{"role":"readonly","allowedNamespaces":["dev"]}`, "admin")
+	updateProfileW := httptest.NewRecorder()
+	r.ServeHTTP(updateProfileW, updateProfileReq)
+	if updateProfileW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("update user profile should return 503 when auth db disabled: %d body=%s", updateProfileW.Code, updateProfileW.Body.String())
+	}
+
 	resetReq := requestWithRole(http.MethodPost, "/api/v1/auth/users/p601-user/reset-password", `{"password":"654321"}`, "admin")
 	resetW := httptest.NewRecorder()
 	r.ServeHTTP(resetW, resetReq)
