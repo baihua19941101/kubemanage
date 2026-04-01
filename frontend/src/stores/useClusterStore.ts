@@ -2,10 +2,15 @@ import { create } from "zustand";
 import { apiFetch } from "../lib/api";
 
 type Cluster = {
+  state: string;
   name: string;
-  version: string;
-  status: string;
-  nodes: number;
+  provider: string;
+  distro: string;
+  kubernetesVersion: string;
+  architecture: string;
+  cpu: string;
+  memory: string;
+  pods: number;
 };
 
 type ClusterConnection = {
@@ -23,21 +28,6 @@ type ClusterConnection = {
   hasCaCert: boolean;
 };
 
-type LiveCluster = {
-  name: string;
-  version: string;
-  status: string;
-  nodes: number;
-  apiServer: string;
-  source: string;
-};
-
-type LiveNamespace = {
-  name: string;
-  status: string;
-  age: string;
-};
-
 type ConnectionTestResult = {
   success: boolean;
   version?: string;
@@ -51,15 +41,10 @@ type ClusterState = {
   clusters: Cluster[];
   current: string;
   connections: ClusterConnection[];
-  liveCluster: LiveCluster | null;
-  liveNamespaces: LiveNamespace[];
   loading: boolean;
-  switching: string;
   error: string;
   load: () => Promise<void>;
   loadConnections: () => Promise<void>;
-  loadLiveData: () => Promise<void>;
-  switchCluster: (name: string) => Promise<void>;
   importKubeconfig: (payload: { name: string; kubeconfigContent: string }) => Promise<boolean>;
   importToken: (payload: { name: string; apiServer: string; bearerToken: string; caCert: string; skipTlsVerify: boolean }) => Promise<boolean>;
   testConnection: (payload: { mode: string; apiServer?: string; kubeconfigContent?: string; bearerToken?: string; caCert?: string; skipTlsVerify?: boolean }) => Promise<ConnectionTestResult>;
@@ -70,10 +55,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
   clusters: [],
   current: "",
   connections: [],
-  liveCluster: null,
-  liveNamespaces: [],
   loading: false,
-  switching: "",
   error: "",
   load: async () => {
     set({ loading: true, error: "" });
@@ -100,40 +82,6 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       set({ connections: data.items });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "获取集群连接失败" });
-    }
-  },
-  loadLiveData: async () => {
-    try {
-      const [clusterResp, nsResp] = await Promise.all([
-        apiFetch("/api/v1/clusters/live"),
-        apiFetch("/api/v1/namespaces/live")
-      ]);
-      if (!clusterResp.ok || !nsResp.ok) {
-        throw new Error("当前尚未激活真实集群连接");
-      }
-      const cluster = (await clusterResp.json()) as LiveCluster;
-      const namespaces = (await nsResp.json()) as { items: LiveNamespace[] };
-      set({ liveCluster: cluster, liveNamespaces: namespaces.items, error: "" });
-    } catch (err) {
-      set({ liveCluster: null, liveNamespaces: [], error: err instanceof Error ? err.message : "获取真实集群数据失败" });
-    }
-  },
-  switchCluster: async (name: string) => {
-    set({ switching: name, error: "" });
-    try {
-      const resp = await apiFetch("/api/v1/clusters/switch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      });
-      if (!resp.ok) {
-        throw new Error("切换示例集群失败");
-      }
-      set({ current: name });
-    } catch (err) {
-      set({ error: err instanceof Error ? err.message : "切换示例集群失败" });
-    } finally {
-      set({ switching: "" });
     }
   },
   importKubeconfig: async (payload) => {
@@ -188,7 +136,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       set({ error: body?.error || "激活真实集群失败" });
       return false;
     }
-    await Promise.all([get().loadConnections(), get().loadLiveData()]);
+    await Promise.all([get().loadConnections(), get().load()]);
     return true;
   }
 }));

@@ -60,7 +60,7 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - `KM_REDIS_ADDR`
 - `KM_REDIS_PASS`
 - `KM_REDIS_DB`
-- `KM_K8S_ADAPTER_MODE`（`mock` / `live` / `auto`）
+- `KM_K8S_ADAPTER_MODE`（建议仅使用 `live` / `auto`，当前研发目标为 real-only）
 - `KM_SECRET_KEY`（连接敏感字段加密密钥，留空则保持明文兼容模式）
 
 ```bash
@@ -435,6 +435,7 @@ bash scripts/rebuild_qa.sh
 - 集群导入首批同时支持 `kubeconfig` 与 `API Server + Token + CA` 两种方式
 - 真实读链路优先覆盖 `Cluster / Namespace / Workloads / Service Discovery / Storage`
 - 在真实读链路稳定后，再推进真实写操作保护、实时日志与终端网关
+- 新增约束（2026-04-01）：停止继续扩展或返回 mock 数据，后续开发与联调统一依赖真实集群数据
 
 ### 前端重构设计（Rancher 风格）
 
@@ -645,7 +646,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第三阶段（P301 基础闭环已完成）`
-- 当前任务：`P303：真实资源读链路切换（待开始）`
-- 当前状态：`P302 已完成（adapter 分层、连接敏感字段加密存储、mock/live/auto 策略归一化、go test + frontend build + p302 冒烟通过）`
+- 当前阶段：`第三阶段（P303 已完成，P304 待开始）`
+- 当前任务：`P304：真实写操作安全化（待开始）`
+- 当前状态：`P303 二次优化已完成：仅保留 test1 真实连接数据；真实连接管理页无 mock 展示且移除 Live 概览；集群列表已收敛为 Provider/Distro 与 Kubernetes Version/Architecture 组合字段`
 - 下一任务：`P304：真实写操作安全化（确认、失败回显、审计增强）`

@@ -21,7 +21,7 @@ func Load() Config {
 	redisAddr := getenv("KM_REDIS_ADDR", "localhost:6379")
 	redisPass := getenv("KM_REDIS_PASS", "")
 	redisDB := getenvInt("KM_REDIS_DB", 0)
-	k8sAdapterMode := getenv("KM_K8S_ADAPTER_MODE", "mock")
+	k8sAdapterMode := getenv("KM_K8S_ADAPTER_MODE", "live")
 	secretKey := getenv("KM_SECRET_KEY", "")
 
 	return Config{

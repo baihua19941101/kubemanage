@@ -33,13 +33,15 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		}
 	}
 	clusterConnectionSvc := service.NewClusterConnectionService(clusterConnectionRepo, clusterConnectionAdapter)
-	clusterHandler := handlers.NewClusterHandler(clusterSvc)
+	clusterHandler := handlers.NewClusterHandler(clusterSvc, clusterConnectionSvc, adapterMode)
 	clusterConnectionHandler := handlers.NewClusterConnectionHandler(clusterConnectionSvc)
 	namespaceSvc := service.NewNamespaceService()
 	workloadSvc := service.NewWorkloadService()
-	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc)
-	workloadHandler := handlers.NewWorkloadHandler(workloadSvc)
-	resourceHandler := handlers.NewResourceHandler(service.NewResourceService())
+	liveWorkloadSvc := service.NewLiveWorkloadReader(clusterConnectionRepo)
+	liveResourceSvc := service.NewLiveResourceReader(clusterConnectionRepo)
+	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc, clusterConnectionSvc, adapterMode)
+	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, adapterMode)
+	resourceHandler := handlers.NewResourceHandler(service.NewResourceService(), liveResourceSvc, adapterMode)
 	authHandler := handlers.NewAuthHandler(authSvc)
 	auditHandler := handlers.NewAuditHandler(auditSvc)
 
@@ -133,9 +135,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 
 func normalizeK8sAdapterMode(mode string) string {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case "live", "auto":
+	case "live", "auto", "mock":
 		return strings.ToLower(strings.TrimSpace(mode))
 	default:
-		return "mock"
+		return "live"
 	}
 }
