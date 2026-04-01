@@ -102,6 +102,7 @@ check_write_flow() {
   local kind="$1"
   local name="$2"
   local payload="$3"
+  local writer_role="$4"
   local body code
 
   body="${TMP_DIR}/${kind}-deny.json"
@@ -109,8 +110,8 @@ check_write_flow() {
   expect_status "${code}" "403" "viewer update ${kind}/${name} should be forbidden"
 
   body="${TMP_DIR}/${kind}-update.json"
-  code="$(request PUT "/api/v1/${kind}/${name}/yaml" operator "${payload}" "${body}")"
-  expect_status "${code}" "204" "operator update ${kind}/${name} yaml"
+  code="$(request PUT "/api/v1/${kind}/${name}/yaml" "${writer_role}" "${payload}" "${body}")"
+  expect_status "${code}" "204" "${writer_role} update ${kind}/${name} yaml"
 }
 
 main() {
@@ -121,10 +122,10 @@ main() {
   check_read_flow "jobs" "db-migrate-20260401"
   check_read_flow "cronjobs" "cleanup"
 
-  check_write_flow "statefulsets" "mysql" '{"yaml":"apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: mysql\n"}'
-  check_write_flow "daemonsets" "node-exporter" '{"yaml":"apiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: node-exporter\n"}'
-  check_write_flow "jobs" "db-migrate-20260401" '{"yaml":"apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: db-migrate-20260401\n"}'
-  check_write_flow "cronjobs" "cleanup" '{"yaml":"apiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: cleanup\n"}'
+  check_write_flow "statefulsets" "mysql" '{"yaml":"apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: mysql\n"}' admin
+  check_write_flow "daemonsets" "node-exporter" '{"yaml":"apiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: node-exporter\n"}' admin
+  check_write_flow "jobs" "db-migrate-20260401" '{"yaml":"apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: db-migrate-20260401\n"}' admin
+  check_write_flow "cronjobs" "cleanup" '{"yaml":"apiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: cleanup\n"}' admin
 
   local body code
   body="${TMP_DIR}/audits.json"
