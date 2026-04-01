@@ -57,12 +57,46 @@ type HPATarget = {
   desiredReplicas: number;
 };
 
+type PVItem = {
+  name: string;
+  capacity: string;
+  accessModes: string;
+  reclaimPolicy: string;
+  status: string;
+  claimRef: string;
+  storageClass: string;
+  age: string;
+};
+
+type PVCItem = {
+  name: string;
+  namespace: string;
+  status: string;
+  volume: string;
+  capacity: string;
+  accessModes: string;
+  storageClass: string;
+  age: string;
+};
+
+type StorageClassItem = {
+  name: string;
+  provisioner: string;
+  reclaimPolicy: string;
+  volumeBindingMode: string;
+  allowVolumeExpansion: boolean;
+  age: string;
+};
+
 type ResourceState = {
   services: ServiceItem[];
   configMaps: ConfigMapItem[];
   secrets: SecretItem[];
   ingresses: IngressItem[];
   hpas: HPAItem[];
+  pvs: PVItem[];
+  pvcs: PVCItem[];
+  storageClasses: StorageClassItem[];
   loading: boolean;
   error: string;
   load: () => Promise<void>;
@@ -76,19 +110,25 @@ export const useResourceStore = create<ResourceState>((set) => ({
   secrets: [],
   ingresses: [],
   hpas: [],
+  pvs: [],
+  pvcs: [],
+  storageClasses: [],
   loading: false,
   error: "",
   load: async () => {
     set({ loading: true, error: "" });
     try {
-      const [sResp, cResp, secResp, ingResp, hpaResp] = await Promise.all([
+      const [sResp, cResp, secResp, ingResp, hpaResp, pvResp, pvcResp, scResp] = await Promise.all([
         apiFetch("/api/v1/services"),
         apiFetch("/api/v1/configmaps"),
         apiFetch("/api/v1/secrets"),
         apiFetch("/api/v1/ingresses"),
-        apiFetch("/api/v1/hpas")
+        apiFetch("/api/v1/hpas"),
+        apiFetch("/api/v1/pvs"),
+        apiFetch("/api/v1/pvcs"),
+        apiFetch("/api/v1/storageclasses")
       ]);
-      if (!sResp.ok || !cResp.ok || !secResp.ok || !ingResp.ok || !hpaResp.ok) {
+      if (!sResp.ok || !cResp.ok || !secResp.ok || !ingResp.ok || !hpaResp.ok || !pvResp.ok || !pvcResp.ok || !scResp.ok) {
         throw new Error("加载服务与配置资源失败");
       }
       const sData = (await sResp.json()) as { items: ServiceItem[] };
@@ -96,12 +136,18 @@ export const useResourceStore = create<ResourceState>((set) => ({
       const secData = (await secResp.json()) as { items: SecretItem[] };
       const ingData = (await ingResp.json()) as { items: IngressItem[] };
       const hpaData = (await hpaResp.json()) as { items: HPAItem[] };
+      const pvData = (await pvResp.json()) as { items: PVItem[] };
+      const pvcData = (await pvcResp.json()) as { items: PVCItem[] };
+      const scData = (await scResp.json()) as { items: StorageClassItem[] };
       set({
         services: sData.items,
         configMaps: cData.items,
         secrets: secData.items,
         ingresses: ingData.items,
-        hpas: hpaData.items
+        hpas: hpaData.items,
+        pvs: pvData.items,
+        pvcs: pvcData.items,
+        storageClasses: scData.items
       });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "加载失败" });

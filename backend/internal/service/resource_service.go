@@ -56,12 +56,46 @@ type HPATarget struct {
 	DesiredReplicas int    `json:"desiredReplicas"`
 }
 
+type PVItem struct {
+	Name          string `json:"name"`
+	Capacity      string `json:"capacity"`
+	AccessModes   string `json:"accessModes"`
+	ReclaimPolicy string `json:"reclaimPolicy"`
+	Status        string `json:"status"`
+	ClaimRef      string `json:"claimRef"`
+	StorageClass  string `json:"storageClass"`
+	Age           string `json:"age"`
+}
+
+type PVCItem struct {
+	Name         string `json:"name"`
+	Namespace    string `json:"namespace"`
+	Status       string `json:"status"`
+	Volume       string `json:"volume"`
+	Capacity     string `json:"capacity"`
+	AccessModes  string `json:"accessModes"`
+	StorageClass string `json:"storageClass"`
+	Age          string `json:"age"`
+}
+
+type StorageClassItem struct {
+	Name                 string `json:"name"`
+	Provisioner          string `json:"provisioner"`
+	ReclaimPolicy        string `json:"reclaimPolicy"`
+	VolumeBindingMode    string `json:"volumeBindingMode"`
+	AllowVolumeExpansion bool   `json:"allowVolumeExpansion"`
+	Age                  string `json:"age"`
+}
+
 type ResourceService struct {
 	services   []ServiceItem
 	configMaps []ConfigMapItem
 	secrets    []SecretItem
 	ingresses  []IngressItem
 	hpas       []HPAItem
+	pvs        []PVItem
+	pvcs       []PVCItem
+	scs        []StorageClassItem
 }
 
 func NewResourceService() *ResourceService {
@@ -139,6 +173,68 @@ func NewResourceService() *ResourceService {
 				TargetCPUPercent:  75,
 				CurrentCPUPercent: 63,
 				Age:               "20h",
+			},
+		},
+		pvs: []PVItem{
+			{
+				Name:          "pv-web-data",
+				Capacity:      "20Gi",
+				AccessModes:   "RWO",
+				ReclaimPolicy: "Delete",
+				Status:        "Bound",
+				ClaimRef:      "default/web-data",
+				StorageClass:  "fast-ssd",
+				Age:           "14d",
+			},
+			{
+				Name:          "pv-worker-cache",
+				Capacity:      "10Gi",
+				AccessModes:   "RWO",
+				ReclaimPolicy: "Retain",
+				Status:        "Bound",
+				ClaimRef:      "dev/worker-cache",
+				StorageClass:  "standard",
+				Age:           "5d",
+			},
+		},
+		pvcs: []PVCItem{
+			{
+				Name:         "web-data",
+				Namespace:    "default",
+				Status:       "Bound",
+				Volume:       "pv-web-data",
+				Capacity:     "20Gi",
+				AccessModes:  "RWO",
+				StorageClass: "fast-ssd",
+				Age:          "14d",
+			},
+			{
+				Name:         "worker-cache",
+				Namespace:    "dev",
+				Status:       "Bound",
+				Volume:       "pv-worker-cache",
+				Capacity:     "10Gi",
+				AccessModes:  "RWO",
+				StorageClass: "standard",
+				Age:          "5d",
+			},
+		},
+		scs: []StorageClassItem{
+			{
+				Name:                 "fast-ssd",
+				Provisioner:          "kubernetes.io/no-provisioner",
+				ReclaimPolicy:        "Delete",
+				VolumeBindingMode:    "WaitForFirstConsumer",
+				AllowVolumeExpansion: true,
+				Age:                  "20d",
+			},
+			{
+				Name:                 "standard",
+				Provisioner:          "kubernetes.io/no-provisioner",
+				ReclaimPolicy:        "Retain",
+				VolumeBindingMode:    "Immediate",
+				AllowVolumeExpansion: false,
+				Age:                  "30d",
 			},
 		},
 	}
@@ -240,6 +336,45 @@ func (s *ResourceService) GetHPATarget(name string) (HPATarget, bool) {
 		CurrentReplicas: hpa.CurrentReplicas,
 		DesiredReplicas: hpa.CurrentReplicas,
 	}, true
+}
+
+func (s *ResourceService) ListPVs() []PVItem {
+	return append([]PVItem(nil), s.pvs...)
+}
+
+func (s *ResourceService) GetPV(name string) (PVItem, bool) {
+	for _, item := range s.pvs {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return PVItem{}, false
+}
+
+func (s *ResourceService) ListPVCs() []PVCItem {
+	return append([]PVCItem(nil), s.pvcs...)
+}
+
+func (s *ResourceService) GetPVC(name string) (PVCItem, bool) {
+	for _, item := range s.pvcs {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return PVCItem{}, false
+}
+
+func (s *ResourceService) ListStorageClasses() []StorageClassItem {
+	return append([]StorageClassItem(nil), s.scs...)
+}
+
+func (s *ResourceService) GetStorageClass(name string) (StorageClassItem, bool) {
+	for _, item := range s.scs {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return StorageClassItem{}, false
 }
 
 func maskSecret(value string) string {

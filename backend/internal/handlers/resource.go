@@ -98,3 +98,42 @@ func (h *ResourceHandler) GetHPATarget(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, item)
 }
+
+func (h *ResourceHandler) ListPVs(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListPVs()})
+}
+
+func (h *ResourceHandler) GetPV(c *gin.Context) {
+	item, ok := h.resourceSvc.GetPV(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "pv not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) ListPVCs(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListPVCs()})
+}
+
+func (h *ResourceHandler) GetPVC(c *gin.Context) {
+	item, ok := h.resourceSvc.GetPVC(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "pvc not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) ListStorageClasses(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListStorageClasses()})
+}
+
+func (h *ResourceHandler) GetStorageClass(c *gin.Context) {
+	item, ok := h.resourceSvc.GetStorageClass(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "storageclass not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}

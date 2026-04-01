@@ -21,6 +21,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import ClusterIcon from "@mui/icons-material/Hub";
 import WorkloadIcon from "@mui/icons-material/ViewQuilt";
 import ConfigIcon from "@mui/icons-material/Tune";
+import StorageIcon from "@mui/icons-material/Storage";
 import SecurityIcon from "@mui/icons-material/Security";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -48,7 +49,10 @@ const navSections: NavSection[] = [
     key: "cluster",
     label: "Cluster",
     icon: <ClusterIcon fontSize="small" />,
-    children: [{ label: "集群管理", path: "/cluster" }]
+    children: [
+      { label: "集群管理", path: "/cluster" },
+      { label: "名称空间", path: "/namespaces" }
+    ]
   },
   {
     key: "workloads",
@@ -64,12 +68,25 @@ const navSections: NavSection[] = [
     ]
   },
   {
-    key: "configuration",
-    label: "Configuration",
+    key: "service-discovery",
+    label: "Service Discovery",
     icon: <ConfigIcon fontSize="small" />,
     children: [
-      { label: "名称空间", path: "/namespaces" },
-      { label: "服务与配置", path: "/resources" }
+      { label: "Service", path: "/service-discovery/services" },
+      { label: "Ingress", path: "/service-discovery/ingresses" },
+      { label: "HPA", path: "/service-discovery/hpas" }
+    ]
+  },
+  {
+    key: "storage",
+    label: "Storage",
+    icon: <StorageIcon fontSize="small" />,
+    children: [
+      { label: "PV", path: "/storage/pvs" },
+      { label: "PVC", path: "/storage/pvcs" },
+      { label: "StorageClass", path: "/storage/storageclasses" },
+      { label: "ConfigMap", path: "/storage/configmaps" },
+      { label: "Secret", path: "/storage/secrets" }
     ]
   },
   {
