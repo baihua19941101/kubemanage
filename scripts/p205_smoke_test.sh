@@ -102,7 +102,7 @@ main() {
   fi
 
   body="${TMP_DIR}/terminal-session.json"
-  code="$(request POST /api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/sessions operator "${body}")"
+  code="$(request POST /api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/sessions admin "${body}")"
   expect_status "${code}" "501" "create terminal session placeholder"
   if ! grep -q 'terminal gateway not enabled' "${body}"; then
     echo "[p205-smoke][FAIL] terminal placeholder message missing"
