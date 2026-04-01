@@ -113,6 +113,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		api.POST("/auth/login", authHandler.Login)
 		api.POST("/auth/refresh", authHandler.Refresh)
 		api.GET("/auth/me", authHandler.GetMe)
+		api.GET("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListUsers)
 		api.GET("/audits", middleware.RequirePermission(authSvc, service.PermAuditRead), auditHandler.ListAudits)
 	}
 
@@ -125,6 +126,8 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("activate_cluster_connection"), clusterConnectionHandler.Activate)
 		write.POST("/auth/logout", authHandler.Logout)
 		write.POST("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("create_user"), authHandler.CreateUser)
+		write.PATCH("/auth/users/:username/status", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_user_status"), authHandler.UpdateUserStatus)
+		write.POST("/auth/users/:username/reset-password", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("reset_user_password"), authHandler.ResetUserPassword)
 		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), middleware.RequireActionConfirm("create_namespace"), namespaceHandler.CreateNamespace)
 		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), middleware.RequireActionConfirm("delete_namespace"), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
