@@ -1,4 +1,16 @@
-import { Alert, Button, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
@@ -87,6 +99,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const getPodYAML = useWorkloadStore((s) => s.getPodYAML);
   const savePodYAML = useWorkloadStore((s) => s.savePodYAML);
   const getPodLogs = useWorkloadStore((s) => s.getPodLogs);
+  const getTerminalCapabilities = useWorkloadStore((s) => s.getTerminalCapabilities);
+  const createTerminalSession = useWorkloadStore((s) => s.createTerminalSession);
   const getStatefulSetYAML = useWorkloadStore((s) => s.getStatefulSetYAML);
   const saveStatefulSetYAML = useWorkloadStore((s) => s.saveStatefulSetYAML);
   const getDaemonSetYAML = useWorkloadStore((s) => s.getDaemonSetYAML);
@@ -104,7 +118,13 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [yamlOpen, setYamlOpen] = useState(false);
   const [yamlText, setYamlText] = useState("");
   const [logsOpen, setLogsOpen] = useState(false);
-  const [logsText, setLogsText] = useState("");
+  const [rawLogsText, setRawLogsText] = useState("");
+  const [logKeyword, setLogKeyword] = useState("");
+  const [logCaseSensitive, setLogCaseSensitive] = useState(false);
+  const [logMatchOnly, setLogMatchOnly] = useState(false);
+  const [logsError, setLogsError] = useState("");
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [terminalNotice, setTerminalNotice] = useState("");
 
   useEffect(() => {
     void load();
@@ -148,6 +168,24 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const selectedDaemonSet = daemonSets.find((x) => x.name === selectedName) ?? null;
   const selectedJob = jobs.find((x) => x.name === selectedName) ?? null;
   const selectedCronJob = cronJobs.find((x) => x.name === selectedName) ?? null;
+
+  const filteredLogsText = useMemo(() => {
+    if (!logKeyword.trim()) {
+      return rawLogsText;
+    }
+
+    const needle = logCaseSensitive ? logKeyword : logKeyword.toLowerCase();
+    const lines = rawLogsText.split("\n").filter((line) => line.length > 0);
+    const matched = lines.filter((line) => {
+      const haystack = logCaseSensitive ? line : line.toLowerCase();
+      return haystack.includes(needle);
+    });
+
+    if (logMatchOnly) {
+      return matched.join("\n");
+    }
+    return rawLogsText;
+  }, [logCaseSensitive, logKeyword, logMatchOnly, rawLogsText]);
 
   const deploymentColumns = [
     { key: "name", header: "名称", render: (r: DeploymentRow) => r.name },
@@ -250,6 +288,53 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
+  async function openLogs() {
+    if (!selectedName) return;
+    setLogsLoading(true);
+    setLogsError("");
+    setTerminalNotice("");
+    setLogKeyword("");
+    setLogCaseSensitive(false);
+    setLogMatchOnly(false);
+    try {
+      const [logs, capabilities] = await Promise.all([
+        getPodLogs(selectedName),
+        getTerminalCapabilities(selectedName)
+      ]);
+      setRawLogsText(logs);
+      setTerminalNotice(capabilities.message);
+      setLogsOpen(true);
+    } catch (err) {
+      setLogsError(err instanceof Error ? err.message : "获取 Pod 日志失败");
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
+  async function openTerminalPlaceholder() {
+    if (!selectedName) return;
+    try {
+      const result = await createTerminalSession(selectedName);
+      setTerminalNotice(result.error || "terminal gateway not enabled");
+    } catch (err) {
+      setTerminalNotice(err instanceof Error ? err.message : "终端能力暂不可用");
+    }
+  }
+
+  function downloadLogs() {
+    if (!selectedName) return;
+    const content = filteredLogsText;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedName}-${formatTimestamp(new Date())}.log`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
       <PageScaffold
@@ -347,15 +432,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Stack direction="row" spacing={1}>
               <Button size="small" onClick={openYaml}>查看/编辑 YAML</Button>
               {mode === "pods" && (
-                <Button
-                  size="small"
-                  onClick={async () => {
-                    if (!selectedName) return;
-                    const logs = await getPodLogs(selectedName);
-                    setLogsText(logs);
-                    setLogsOpen(true);
-                  }}
-                >
+                <Button size="small" onClick={() => void openLogs()} disabled={logsLoading}>
                   查看日志
                 </Button>
               )}
@@ -429,12 +506,55 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         onSave={!canWorkloadWrite() ? undefined : saveYaml}
       />
 
-      <YamlDialog
-        open={logsOpen}
-        title={selectedName ? `Pod 日志 - ${selectedName}` : "Pod 日志"}
-        yaml={logsText}
-        onClose={() => setLogsOpen(false)}
-      />
+      <Dialog open={logsOpen} onClose={() => setLogsOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>{selectedName ? `Pod 日志 - ${selectedName}` : "Pod 日志"}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {logsError && <Alert severity="error">{logsError}</Alert>}
+            {terminalNotice && <Alert severity="info">终端预留状态：{terminalNotice}</Alert>}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+              <TextField
+                size="small"
+                label="日志关键字"
+                value={logKeyword}
+                onChange={(e) => setLogKeyword(e.target.value)}
+                sx={{ minWidth: 240 }}
+              />
+              <FormControlLabel
+                control={<Checkbox checked={logCaseSensitive} onChange={(e) => setLogCaseSensitive(e.target.checked)} />}
+                label="大小写敏感"
+              />
+              <FormControlLabel
+                control={<Checkbox checked={logMatchOnly} onChange={(e) => setLogMatchOnly(e.target.checked)} />}
+                label="仅显示匹配行"
+              />
+            </Stack>
+            <TextField
+              multiline
+              minRows={16}
+              fullWidth
+              value={filteredLogsText}
+              InputProps={{ readOnly: true }}
+              placeholder={logsLoading ? "日志加载中..." : "暂无日志"}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => void openTerminalPlaceholder()}>打开终端</Button>
+          <Button onClick={downloadLogs} disabled={!filteredLogsText}>导出日志</Button>
+          <Button onClick={() => setLogsOpen(false)}>关闭</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
+}
+
+function formatTimestamp(date: Date) {
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
 }

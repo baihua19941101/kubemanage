@@ -87,6 +87,18 @@ type WorkloadService struct {
 	podLogs        map[string]string
 }
 
+type PodLogQuery struct {
+	Keyword       string
+	CaseSensitive bool
+	MatchOnly     bool
+}
+
+type TerminalCapabilities struct {
+	Enabled   bool     `json:"enabled"`
+	Protocols []string `json:"protocols"`
+	Message   string   `json:"message"`
+}
+
 func NewWorkloadService() *WorkloadService {
 	now := time.Now()
 	deployments := []Deployment{
@@ -377,12 +389,59 @@ func (s *WorkloadService) UpdateCronJobYAML(name, yaml string) error {
 	return updateYAML(s.cronJobYAML, "cronjob", name, yaml)
 }
 
-func (s *WorkloadService) GetPodLogs(name string) (string, error) {
+func (s *WorkloadService) GetPodLogs(name string, query PodLogQuery) (string, error) {
 	logs, ok := s.podLogs[name]
 	if !ok {
 		return "", fmt.Errorf("pod not found: %s", name)
 	}
-	return logs, nil
+	if strings.TrimSpace(query.Keyword) == "" {
+		return logs, nil
+	}
+
+	lines := strings.Split(logs, "\n")
+	needle := query.Keyword
+	if !query.CaseSensitive {
+		needle = strings.ToLower(needle)
+	}
+
+	matched := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		haystack := line
+		if !query.CaseSensitive {
+			haystack = strings.ToLower(line)
+		}
+		if strings.Contains(haystack, needle) {
+			matched = append(matched, line)
+		} else if !query.MatchOnly {
+			matched = append(matched, line)
+		}
+	}
+
+	if len(matched) == 0 {
+		return "", nil
+	}
+	return strings.Join(matched, "\n") + "\n", nil
+}
+
+func (s *WorkloadService) GetTerminalCapabilities(name string) (TerminalCapabilities, error) {
+	if _, ok := s.podLogs[name]; !ok {
+		return TerminalCapabilities{}, fmt.Errorf("pod not found: %s", name)
+	}
+	return TerminalCapabilities{
+		Enabled:   false,
+		Protocols: []string{"websocket"},
+		Message:   "terminal gateway not enabled",
+	}, nil
+}
+
+func (s *WorkloadService) CreateTerminalSession(name string) error {
+	if _, ok := s.podLogs[name]; !ok {
+		return fmt.Errorf("pod not found: %s", name)
+	}
+	return nil
 }
 
 func (s *WorkloadService) refreshAges() {
