@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第三阶段（P301 基础闭环已完成，P302 待开始）
+- 阶段：第三阶段（P302 已完成，P303 待开始）
 - 更新时间：2026-04-01
 
 ## 任务列表
@@ -33,7 +33,7 @@
 | P206 | 第二阶段任务6：权限与审计增强 | 已完成 | 已完成第一版命名空间级授权与审计筛选 |
 | P207 | 第二阶段任务7：联调与验收 | 已完成 | 已完成第二阶段统一验收脚本与整体验收 |
 | P301 | 第三阶段任务1：真实集群接入与导入 | 已完成（基础闭环） | 已完成基础闭环与验收，后续深化拆分到 P302/P303 |
-| P302 | 第三阶段任务2：k8s client adapter 与连接配置存储 | 待开始 | Adapter 分层、配置存储与数据源切换 |
+| P302 | 第三阶段任务2：k8s client adapter 与连接配置存储 | 已完成 | 已完成 Adapter 分层、敏感字段加密存储、mock/live/auto 模式归一化与回归验收 |
 | P303 | 第三阶段任务3：真实资源读链路切换 | 待开始 | Cluster/Namespace/Workloads/Service Discovery/Storage |
 | P304 | 第三阶段任务4：真实写操作安全化 | 待开始 | 确认、失败回显、审计增强 |
 | P305 | 第三阶段任务5：真实日志与终端能力 | 待开始 | 多容器、流式日志、exec/terminal |
@@ -87,6 +87,11 @@
 | T059 | P301-D：前端集群导入与连接测试页面 | 已完成 | 已完成导入表单、连接测试、激活与 live 数据展示 |
 | T060 | P301-E：P301 冒烟脚本与基础验收 | 已完成 | 已新增 scripts/p301_smoke_test.sh，并通过前端构建与 P301 冒烟验证 |
 | T061 | 文档状态对齐（README/TASKS） | 已完成 | 已统一第三阶段当前状态：P301 基础闭环完成，P302 待开始 |
+| T062 | P302 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p302-adapter-storage-deepen，已通过 docker exec mysql8 完成备份 kubemanage-20260401-152041-p302.sql |
+| T063 | P302-A：adapter 分层重构 | 已完成 | 已拆分 fake/live adapter 与 rest config 构建到独立文件，并补充调用超时控制 |
+| T064 | P302-B：连接配置存储深化 | 已完成 | 已新增 KM_SECRET_KEY 透明加解密与历史明文兼容读取 |
+| T065 | P302-C：数据源切换策略固化 | 已完成 | 已增加 mock/live/auto 模式归一化解析与路由层统一选择 |
+| T066 | P302-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build、scripts/p302_smoke_test.sh |
 
 ## 完成记录
 
@@ -175,3 +180,10 @@
 - 2026-04-01：完成 T060（P301-E：新增 scripts/p301_smoke_test.sh，并通过独立端口 P301 冒烟验证）
 - 2026-04-01：按当前会话收口要求停止继续开发，已将 P301 最新基础闭环进度同步到 README/TASKS，供下个会话直接接续
 - 2026-04-01：完成 T061（对齐 README/TASKS 状态口径：P301 基础闭环完成，P302 待开始）
+- 2026-04-01：完成 T062（创建 feature/p302-adapter-storage-deepen，并通过 docker exec mysql8 生成 backups/kubemanage-20260401-152041-p302.sql）
+- 2026-04-01：启动 T063（P302-A：adapter 分层重构）
+- 2026-04-01：完成 T063（adapter 逻辑拆分到 cluster_connection_adapter，并通过 go test）
+- 2026-04-01：完成 T064（新增 KM_SECRET_KEY 透明加密存储，兼容历史明文读取）
+- 2026-04-01：完成 T065（新增 mock/live/auto adapter 模式归一化解析）
+- 2026-04-01：完成 T066（通过 go test ./...、npm run build、scripts/p302_smoke_test.sh）
+- 2026-04-01：完成 P302（k8s adapter 与连接配置存储深化）

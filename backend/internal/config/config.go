@@ -6,12 +6,13 @@ import (
 )
 
 type Config struct {
-	ListenAddr string
-	MySQLDSN   string
-	RedisAddr  string
-	RedisPass  string
-	RedisDB    int
+	ListenAddr     string
+	MySQLDSN       string
+	RedisAddr      string
+	RedisPass      string
+	RedisDB        int
 	K8sAdapterMode string
+	SecretKey      string
 }
 
 func Load() Config {
@@ -21,14 +22,16 @@ func Load() Config {
 	redisPass := getenv("KM_REDIS_PASS", "")
 	redisDB := getenvInt("KM_REDIS_DB", 0)
 	k8sAdapterMode := getenv("KM_K8S_ADAPTER_MODE", "mock")
+	secretKey := getenv("KM_SECRET_KEY", "")
 
 	return Config{
-		ListenAddr: listenAddr,
-		MySQLDSN:   mysqlDSN,
-		RedisAddr:  redisAddr,
-		RedisPass:  redisPass,
-		RedisDB:    redisDB,
+		ListenAddr:     listenAddr,
+		MySQLDSN:       mysqlDSN,
+		RedisAddr:      redisAddr,
+		RedisPass:      redisPass,
+		RedisDB:        redisDB,
 		K8sAdapterMode: k8sAdapterMode,
+		SecretKey:      secretKey,
 	}
 }
 

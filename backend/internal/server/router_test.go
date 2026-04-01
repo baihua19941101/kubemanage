@@ -21,7 +21,7 @@ func requestWithRole(method, path string, body string, role string) *http.Reques
 }
 
 func TestHealthz(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 	req, err := http.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
 	if err != nil {
 		t.Fatalf("build request failed: %v", err)
@@ -36,7 +36,7 @@ func TestHealthz(t *testing.T) {
 }
 
 func TestClusters(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 	req, err := http.NewRequest(http.MethodGet, "/api/v1/clusters", nil)
 	if err != nil {
 		t.Fatalf("build request failed: %v", err)
@@ -93,7 +93,7 @@ func TestClusters(t *testing.T) {
 }
 
 func TestSwitchCluster(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 	req := requestWithRole(http.MethodPost, "/api/v1/clusters/switch", `{"name":"staging-cluster"}`, "admin")
 
 	w := httptest.NewRecorder()
@@ -105,7 +105,7 @@ func TestSwitchCluster(t *testing.T) {
 }
 
 func TestNamespaces(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 
 	listReq, _ := http.NewRequest(http.MethodGet, "/api/v1/namespaces", nil)
 	listW := httptest.NewRecorder()
@@ -154,7 +154,7 @@ func TestNamespaces(t *testing.T) {
 }
 
 func TestWorkloads(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 
 	deployListReq, _ := http.NewRequest(http.MethodGet, "/api/v1/deployments", nil)
 	deployListW := httptest.NewRecorder()
@@ -280,7 +280,7 @@ func TestWorkloads(t *testing.T) {
 }
 
 func TestResourceEndpoints(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 
 	req1, _ := http.NewRequest(http.MethodGet, "/api/v1/services", nil)
 	w1 := httptest.NewRecorder()
@@ -361,7 +361,7 @@ func TestResourceEndpoints(t *testing.T) {
 }
 
 func TestRBACAndAudit(t *testing.T) {
-	r := NewRouter(nil, "mock")
+	r := NewRouter(nil, "mock", "")
 
 	denyReq := requestWithRole(http.MethodDelete, "/api/v1/namespaces/default", "", "viewer")
 	denyW := httptest.NewRecorder()
