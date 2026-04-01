@@ -434,7 +434,7 @@ bash scripts/rebuild_qa.sh
 - 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Service Discovery / Storage / Security`，点击一级菜单展开二级子菜单
 - Workloads 二级菜单：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
 - Service Discovery 二级菜单：`Service / Ingress / HPA`
-- Storage 二级菜单：`PV / PVC / StorageClass / ConfigMap / Secret`
+- Storage 二级菜单：`PersistentVolumes / PersistentVolumeClaims / StorageClasses / ConfigMaps / Secrets`
 - 所有二级资源页面布局统一对齐 Workloads（筛选栏 + 资源表 + 详情抽屉）
 
 ## 任务计划

@@ -58,6 +58,7 @@
 | T036 | P204-B：前端 Storage 页面扩展 | 已完成 | 已新增 StoragePage，支持 PV/PVC/StorageClass/ConfigMap/Secret |
 | T037 | 导航结构对齐需求（Service Discovery/Storage 一级） | 已完成 | 已拆分 Service Discovery、Storage 一级菜单与子资源路由 |
 | T038 | 布局一致性对齐（向 Workloads 看齐） | 已完成 | 子资源页面统一为筛选栏+资源表+详情抽屉布局 |
+| T039 | Storage 子资源命名规范对齐 | 已完成 | 已统一为 PersistentVolumes/StorageClasses/ConfigMaps/PersistentVolumeClaims/Secrets |
 
 ## 完成记录
 
@@ -115,3 +116,4 @@
 - 2026-04-01：完成 T037（Service Discovery/Storage 拆分为一级菜单）
 - 2026-04-01：完成 T038（子资源页面布局统一对齐 Workloads）
 - 2026-04-01：完成 P204（存储管理扩展与导航对齐）
+- 2026-04-01：完成 T039（Storage 子资源标签命名统一为全称）

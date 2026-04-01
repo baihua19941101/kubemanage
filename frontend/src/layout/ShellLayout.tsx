@@ -82,11 +82,11 @@ const navSections: NavSection[] = [
     label: "Storage",
     icon: <StorageIcon fontSize="small" />,
     children: [
-      { label: "PV", path: "/storage/pvs" },
-      { label: "PVC", path: "/storage/pvcs" },
-      { label: "StorageClass", path: "/storage/storageclasses" },
-      { label: "ConfigMap", path: "/storage/configmaps" },
-      { label: "Secret", path: "/storage/secrets" }
+      { label: "PersistentVolumes", path: "/storage/pvs" },
+      { label: "PersistentVolumeClaims", path: "/storage/pvcs" },
+      { label: "StorageClasses", path: "/storage/storageclasses" },
+      { label: "ConfigMaps", path: "/storage/configmaps" },
+      { label: "Secrets", path: "/storage/secrets" }
     ]
   },
   {

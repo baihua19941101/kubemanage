@@ -149,14 +149,14 @@ export default function StoragePage({ initialMode = "pvs" }: Props) {
 
   const currentLabel =
     mode === "pvs"
-      ? "PV"
+      ? "PersistentVolumes"
       : mode === "pvcs"
-        ? "PVC"
+        ? "PersistentVolumeClaims"
         : mode === "storageclasses"
-          ? "StorageClass"
+          ? "StorageClasses"
           : mode === "configmaps"
-            ? "ConfigMap"
-            : "Secret";
+            ? "ConfigMaps"
+            : "Secrets";
 
   return (
     <>
