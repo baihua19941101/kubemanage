@@ -1,45 +1,23 @@
-import {
-  AppBar,
-  Box,
-  Container,
-  Tab,
-  Tabs,
-  Toolbar,
-  Typography
-} from "@mui/material";
-import { useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import ShellLayout from "./layout/ShellLayout";
+import AuthAuditPage from "./pages/AuthAuditPage";
 import ClusterPage from "./pages/ClusterPage";
 import NamespacePage from "./pages/NamespacePage";
-import WorkloadPage from "./pages/WorkloadPage";
 import ResourcePage from "./pages/ResourcePage";
-import AuthAuditPage from "./pages/AuthAuditPage";
+import WorkloadPage from "./pages/WorkloadPage";
 
 export default function App() {
-  const [tab, setTab] = useState("clusters");
-
   return (
-    <Box>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography variant="h6" component="div">
-            kubeManage MVP
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Container sx={{ py: 3 }}>
-        <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 2 }}>
-          <Tab label="集群管理" value="clusters" />
-          <Tab label="名称空间管理" value="namespaces" />
-          <Tab label="工作负载管理" value="workloads" />
-          <Tab label="服务与配置" value="resources" />
-          <Tab label="权限与审计" value="auth-audit" />
-        </Tabs>
-        {tab === "clusters" && <ClusterPage />}
-        {tab === "namespaces" && <NamespacePage />}
-        {tab === "workloads" && <WorkloadPage />}
-        {tab === "resources" && <ResourcePage />}
-        {tab === "auth-audit" && <AuthAuditPage />}
-      </Container>
-    </Box>
+    <Routes>
+      <Route path="/" element={<ShellLayout />}>
+        <Route index element={<Navigate to="/cluster" replace />} />
+        <Route path="cluster" element={<ClusterPage />} />
+        <Route path="namespaces" element={<NamespacePage />} />
+        <Route path="workloads" element={<WorkloadPage />} />
+        <Route path="resources" element={<ResourcePage />} />
+        <Route path="auth-audit" element={<AuthAuditPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/cluster" replace />} />
+    </Routes>
   );
 }
