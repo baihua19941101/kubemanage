@@ -48,6 +48,7 @@ var (
 	ErrReadonlyScopeRequired = errors.New("readonly requires at least one allowed namespace")
 	ErrUserNotFound          = errors.New("user not found")
 	ErrAdminDisableForbidden = errors.New("admin user cannot be disabled")
+	ErrAdminRoleChangeDenied = errors.New("admin user role cannot be changed")
 )
 
 type AuthIdentity struct {
@@ -395,6 +396,44 @@ func (s *AuthService) ResetUserPassword(ctx context.Context, username, newPasswo
 		return err
 	}
 	record.PasswordHash = string(hash)
+	return s.db.WithContext(ctx).Save(&record).Error
+}
+
+func (s *AuthService) UpdateUserRoleAndNamespaces(ctx context.Context, username, role string, allowedNamespaces []string) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	username = strings.TrimSpace(username)
+	var record infra.UserRecord
+	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	normalizedRole := s.NormalizeRole(role)
+	if normalizedRole != RoleAdmin && normalizedRole != RoleStandardUser && normalizedRole != RoleReadonly {
+		return ErrRoleNotAllowed
+	}
+
+	if strings.EqualFold(record.Username, "admin") && normalizedRole != RoleAdmin {
+		return ErrAdminRoleChangeDenied
+	}
+
+	normalizedAllowed := normalizeAllowedNamespaces(allowedNamespaces)
+	if normalizedRole == RoleAdmin {
+		normalizedAllowed = []string{"*"}
+	}
+	if normalizedRole == RoleReadonly && len(normalizedAllowed) == 0 {
+		return ErrReadonlyScopeRequired
+	}
+	if normalizedRole == RoleStandardUser && len(normalizedAllowed) == 0 {
+		normalizedAllowed = []string{"dev"}
+	}
+
+	record.Role = normalizedRole
+	record.AllowedNamespaces = strings.Join(normalizedAllowed, ",")
 	return s.db.WithContext(ctx).Save(&record).Error
 }
 

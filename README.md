@@ -302,6 +302,16 @@ curl -X POST http://localhost:8080/api/v1/auth/users/readonly1/reset-password \
   -d '{"password":"654321"}'
 ```
 
+管理员编辑用户角色与授权范围：
+
+```bash
+curl -X PATCH http://localhost:8080/api/v1/auth/users/readonly1 \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM" \
+  -H "Content-Type: application/json" \
+  -d '{"role":"standard-user","allowedNamespaces":["dev","qa"]}'
+```
+
 以 viewer 角色尝试删除名称空间（应返回 403）：
 
 ```bash
@@ -337,6 +347,12 @@ P601 用户管理冒烟脚本：
 
 ```bash
 bash scripts/p601_user_management_smoke_test.sh
+```
+
+P701 细粒度授权冒烟脚本：
+
+```bash
+bash scripts/p701_fine_grained_auth_smoke_test.sh
 ```
 
 ## 开发原则
@@ -819,6 +835,30 @@ bash scripts/p601_user_management_smoke_test.sh
 - 当前处于 `P601 已完成`
 - 验证结果：`go test ./...`、`npm run build`、`scripts/p601_user_management_smoke_test.sh` 全部通过
 
+### P701 计划（2026-04-01）
+
+#### 范围定义
+- 目标：落地“细粒度授权基础能力”，允许管理员在线调整用户角色与授权命名空间
+- 本轮不纳入：OAuth/LDAP 登录接入、企业组织/用户组同步、外部 IdP 回调链路
+
+#### 能力范围
+- 后端新增“更新用户角色与授权范围”接口
+- 前端用户管理页增加“编辑授权”能力
+- 保持现有 `X-Action-Confirm` 写操作确认与 `PermUserManage` 权限校验
+
+#### 开发拆分
+1. `P701-A`：后端接口与服务层校验（角色合法性、命名空间范围）
+2. `P701-B`：前端用户授权编辑交互（弹窗编辑 + 列表刷新）
+3. `P701-C`：联调与验收（go test、frontend build、p701 冒烟）
+
+#### 当前状态
+- 状态：`已完成`
+- 已交付：
+  - `PATCH /api/v1/auth/users/:username` 用户角色与授权范围编辑接口
+  - 前端用户管理页“编辑授权”弹窗交互
+  - `scripts/p701_fine_grained_auth_smoke_test.sh` 冒烟脚本
+- 验证结果：`go test ./...`、`npm run build`、`scripts/p701_fine_grained_auth_smoke_test.sh` 全部通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -829,7 +869,7 @@ bash scripts/p601_user_management_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第六阶段（P601 已完成）`
-- 当前任务：`P601：用户管理增强（已完成）`
-- 当前状态：`已交付用户列表、用户启停、密码重置、前端用户管理页面与 P601 冒烟脚本`
-- 下一任务：`第七阶段规划（OAuth/LDAP 与更细粒度授权）`
+- 当前阶段：`第七阶段（P701 已完成）`
+- 当前任务：`P701：细粒度授权基础能力（已完成）`
+- 当前状态：`已交付用户角色/授权范围在线编辑能力并通过联调验收`
+- 下一任务：`第八阶段规划（OAuth/LDAP 接入与企业身份源整合）`

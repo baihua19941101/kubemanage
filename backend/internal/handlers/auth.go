@@ -39,6 +39,11 @@ type resetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
+type updateUserProfileRequest struct {
+	Role              string   `json:"role"`
+	AllowedNamespaces []string `json:"allowedNamespaces"`
+}
+
 func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 	return &AuthHandler{authSvc: authSvc}
 }
@@ -183,6 +188,29 @@ func (h *AuthHandler) ResetUserPassword(c *gin.Context) {
 		case service.ErrUserNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		case service.ErrPasswordTooShort:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) UpdateUserProfile(c *gin.Context) {
+	username := c.Param("username")
+	var req updateUserProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := h.authSvc.UpdateUserRoleAndNamespaces(c.Request.Context(), username, req.Role, req.AllowedNamespaces); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case service.ErrRoleNotAllowed, service.ErrReadonlyScopeRequired, service.ErrAdminRoleChangeDenied:
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

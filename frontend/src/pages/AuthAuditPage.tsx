@@ -55,6 +55,7 @@ export default function AuthAuditPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
   const [userFilter, setUserFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [pathFilter, setPathFilter] = useState("");
@@ -69,6 +70,9 @@ export default function AuthAuditPage() {
 
   const [resetTarget, setResetTarget] = useState<UserItem | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [editTarget, setEditTarget] = useState<UserItem | null>(null);
+  const [editRoleValue, setEditRoleValue] = useState("readonly");
+  const [editNamespacesValue, setEditNamespacesValue] = useState("dev");
 
   useEffect(() => {
     void loadAudits();
@@ -228,6 +232,40 @@ export default function AuthAuditPage() {
     }
   }
 
+  function openEditProfile(item: UserItem) {
+    setEditTarget(item);
+    setEditRoleValue(item.role);
+    setEditNamespacesValue(item.allowedNamespaces.join(","));
+  }
+
+  async function submitEditProfile() {
+    if (!editTarget) return;
+    setProfileSubmitting(true);
+    setUserError("");
+    try {
+      const resp = await apiFetch(`/api/v1/auth/users/${encodeURIComponent(editTarget.username)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Action-Confirm": "CONFIRM"
+        },
+        body: JSON.stringify({
+          role: editRoleValue,
+          allowedNamespaces: parseNamespaces(editNamespacesValue)
+        })
+      });
+      if (!resp.ok) {
+        const err = await parseApiError(resp, "更新用户授权失败");
+        setUserError(err.message);
+        return;
+      }
+      setEditTarget(null);
+      await loadUsers();
+    } finally {
+      setProfileSubmitting(false);
+    }
+  }
+
   const auditColumns = useMemo(
     () => [
       { key: "time", header: "时间", render: (r: AuditItem) => r.time },
@@ -259,6 +297,9 @@ export default function AuthAuditPage() {
         header: "操作",
         render: (r: UserItem) => (
           <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={() => openEditProfile(r)}>
+              编辑授权
+            </Button>
             <Button size="small" variant="outlined" onClick={() => void updateUserStatus(r, !r.isActive)}>
               {r.isActive ? "禁用" : "启用"}
             </Button>
@@ -409,6 +450,42 @@ export default function AuthAuditPage() {
           <Button onClick={() => setResetTarget(null)}>取消</Button>
           <Button variant="contained" disabled={passwordSubmitting} onClick={() => void submitResetPassword()}>
             提交
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(editTarget)} onClose={() => setEditTarget(null)} fullWidth maxWidth="sm">
+        <DialogTitle>编辑用户授权</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              用户：{editTarget?.username}
+            </Typography>
+            <FormControl size="small">
+              <InputLabel id="edit-role-label">角色</InputLabel>
+              <Select
+                labelId="edit-role-label"
+                value={editRoleValue}
+                label="角色"
+                onChange={(e) => setEditRoleValue(e.target.value)}
+              >
+                <MenuItem value="readonly">readonly</MenuItem>
+                <MenuItem value="standard-user">standard-user</MenuItem>
+                <MenuItem value="admin">admin</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              label="授权命名空间(逗号分隔)"
+              value={editNamespacesValue}
+              onChange={(e) => setEditNamespacesValue(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditTarget(null)}>取消</Button>
+          <Button variant="contained" disabled={profileSubmitting} onClick={() => void submitEditProfile()}>
+            保存
           </Button>
         </DialogActions>
       </Dialog>
