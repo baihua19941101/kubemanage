@@ -3,6 +3,7 @@ import {
   Avatar,
   Box,
   Breadcrumbs,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -21,6 +22,8 @@ import ClusterIcon from "@mui/icons-material/Hub";
 import WorkloadIcon from "@mui/icons-material/ViewQuilt";
 import ConfigIcon from "@mui/icons-material/Tune";
 import SecurityIcon from "@mui/icons-material/Security";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -50,6 +53,7 @@ const navItems: NavLeaf[] = [
 
 export default function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [workloadsOpen, setWorkloadsOpen] = useState(true);
   const location = useLocation();
 
   const current = navItems.find((leaf) => leaf.path === location.pathname);
@@ -86,31 +90,82 @@ export default function ShellLayout() {
             >
               {group}
             </Typography>
-            {items.map((entry) => {
-              const active = location.pathname === entry.path;
-              return (
+            {group !== "Workloads" &&
+              items.map((entry) => {
+                const active = location.pathname === entry.path;
+                return (
+                  <ListItemButton
+                    key={entry.path}
+                    component={NavLink}
+                    to={entry.path}
+                    selected={active}
+                    sx={{
+                      borderRadius: 1.5,
+                      mx: 0.5,
+                      my: 0.2,
+                      bgcolor: active ? "#dce9fb" : "transparent",
+                      color: active ? "#0b3b75" : "inherit",
+                      "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                    }}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+                      {entry.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={entry.label} />
+                  </ListItemButton>
+                );
+              })}
+
+            {group === "Workloads" && (
+              <>
                 <ListItemButton
-                  key={entry.path}
-                  component={NavLink}
-                  to={entry.path}
-                  selected={active}
+                  selected={location.pathname.startsWith("/workloads/")}
+                  onClick={() => setWorkloadsOpen((prev) => !prev)}
                   sx={{
                     borderRadius: 1.5,
                     mx: 0.5,
                     my: 0.2,
-                    bgcolor: active ? "#dce9fb" : "transparent",
-                    color: active ? "#0b3b75" : "inherit",
-                    "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                    bgcolor: location.pathname.startsWith("/workloads/") ? "#dce9fb" : "transparent",
+                    color: location.pathname.startsWith("/workloads/") ? "#0b3b75" : "inherit",
+                    "&:hover": { bgcolor: location.pathname.startsWith("/workloads/") ? "#dce9fb" : "#eaf1fb" }
                   }}
-                  onClick={() => setMobileOpen(false)}
                 >
                   <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
-                    {entry.icon}
+                    <WorkloadIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary={entry.label} />
+                  <ListItemText primary="工作负载" />
+                  {workloadsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                 </ListItemButton>
-              );
-            })}
+                <Collapse in={workloadsOpen} timeout="auto" unmountOnExit>
+                  <List disablePadding sx={{ pl: 1.5 }}>
+                    {items.map((entry) => {
+                      const active = location.pathname === entry.path;
+                      return (
+                        <ListItemButton
+                          key={entry.path}
+                          component={NavLink}
+                          to={entry.path}
+                          selected={active}
+                          sx={{
+                            borderRadius: 1.5,
+                            mx: 0.5,
+                            my: 0.1,
+                            pl: 4,
+                            bgcolor: active ? "#dce9fb" : "transparent",
+                            color: active ? "#0b3b75" : "inherit",
+                            "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                          }}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          <ListItemText primary={entry.label} primaryTypographyProps={{ variant: "body2" }} />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </>
+            )}
           </Box>
         ))}
       </List>
