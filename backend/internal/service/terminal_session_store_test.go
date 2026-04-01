@@ -49,3 +49,15 @@ func TestTerminalSessionStorePodMismatch(t *testing.T) {
 		t.Fatalf("pod mismatch should fail with not found, got: %v", err)
 	}
 }
+
+func TestTerminalSessionStoreTTL(t *testing.T) {
+	store := NewTerminalSessionStore(90 * time.Second)
+	if got := store.TTL(); got != 90*time.Second {
+		t.Fatalf("ttl mismatch: got=%v", got)
+	}
+
+	fallbackStore := NewTerminalSessionStore(0)
+	if got := fallbackStore.TTL(); got != 2*time.Minute {
+		t.Fatalf("fallback ttl mismatch: got=%v", got)
+	}
+}

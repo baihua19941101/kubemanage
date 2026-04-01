@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func requestWithRole(method, path string, body string, role string) *http.Request {
@@ -421,5 +422,27 @@ func TestRBACAndAudit(t *testing.T) {
 	r.ServeHTTP(clusterManageDenyW, clusterManageDenyReq)
 	if clusterManageDenyW.Code != http.StatusForbidden {
 		t.Fatalf("operator should be forbidden to import cluster connections, got %d", clusterManageDenyW.Code)
+	}
+}
+
+func TestParseTerminalSessionTTL(t *testing.T) {
+	t.Setenv("KM_TERMINAL_SESSION_TTL_SECONDS", "")
+	if got := parseTerminalSessionTTL(); got != 120*time.Second {
+		t.Fatalf("default ttl mismatch: got=%v want=%v", got, 120*time.Second)
+	}
+
+	t.Setenv("KM_TERMINAL_SESSION_TTL_SECONDS", "300")
+	if got := parseTerminalSessionTTL(); got != 300*time.Second {
+		t.Fatalf("custom ttl mismatch: got=%v want=%v", got, 300*time.Second)
+	}
+
+	t.Setenv("KM_TERMINAL_SESSION_TTL_SECONDS", "0")
+	if got := parseTerminalSessionTTL(); got != 120*time.Second {
+		t.Fatalf("zero ttl should fallback: got=%v", got)
+	}
+
+	t.Setenv("KM_TERMINAL_SESSION_TTL_SECONDS", "bad")
+	if got := parseTerminalSessionTTL(); got != 120*time.Second {
+		t.Fatalf("invalid ttl should fallback: got=%v", got)
 	}
 }

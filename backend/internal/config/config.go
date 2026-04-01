@@ -6,13 +6,17 @@ import (
 )
 
 type Config struct {
-	ListenAddr     string
-	MySQLDSN       string
-	RedisAddr      string
-	RedisPass      string
-	RedisDB        int
-	K8sAdapterMode string
-	SecretKey      string
+	ListenAddr          string
+	MySQLDSN            string
+	RedisAddr           string
+	RedisPass           string
+	RedisDB             int
+	K8sAdapterMode      string
+	SecretKey           string
+	AuthJWTSecret       string
+	AuthAccessTTL       int
+	AuthRefreshTTL      int
+	AuthCompatStageKeep int
 }
 
 func Load() Config {
@@ -23,15 +27,23 @@ func Load() Config {
 	redisDB := getenvInt("KM_REDIS_DB", 0)
 	k8sAdapterMode := getenv("KM_K8S_ADAPTER_MODE", "live")
 	secretKey := getenv("KM_SECRET_KEY", "")
+	authJWTSecret := getenv("KM_AUTH_JWT_SECRET", "km-dev-jwt-secret")
+	authAccessTTL := getenvInt("KM_AUTH_ACCESS_TTL_SECONDS", 3600)
+	authRefreshTTL := getenvInt("KM_AUTH_REFRESH_TTL_SECONDS", 604800)
+	authCompatKeep := getenvInt("KM_AUTH_COMPAT_STAGE_KEEP", 1)
 
 	return Config{
-		ListenAddr:     listenAddr,
-		MySQLDSN:       mysqlDSN,
-		RedisAddr:      redisAddr,
-		RedisPass:      redisPass,
-		RedisDB:        redisDB,
-		K8sAdapterMode: k8sAdapterMode,
-		SecretKey:      secretKey,
+		ListenAddr:          listenAddr,
+		MySQLDSN:            mysqlDSN,
+		RedisAddr:           redisAddr,
+		RedisPass:           redisPass,
+		RedisDB:             redisDB,
+		K8sAdapterMode:      k8sAdapterMode,
+		SecretKey:           secretKey,
+		AuthJWTSecret:       authJWTSecret,
+		AuthAccessTTL:       authAccessTTL,
+		AuthRefreshTTL:      authRefreshTTL,
+		AuthCompatStageKeep: authCompatKeep,
 	}
 }
 

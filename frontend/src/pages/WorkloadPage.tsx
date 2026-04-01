@@ -344,7 +344,13 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     try {
       const result = await createTerminalSession(selectedName, logContainer || undefined);
       if (result.wsPath) {
-        setTerminalNotice(`终端会话已创建，可使用 WebSocket 地址：${result.wsPath}`);
+        const ttlHint =
+          result.ttlSeconds && result.expiresAt
+            ? `（TTL ${result.ttlSeconds}s，过期时间 ${result.expiresAt}）`
+            : result.ttlSeconds
+            ? `（TTL ${result.ttlSeconds}s）`
+            : "";
+        setTerminalNotice(`终端会话已创建${ttlHint}，可使用 WebSocket 地址：${result.wsPath}`);
       } else {
         setTerminalNotice(result.error || "terminal gateway not enabled");
       }

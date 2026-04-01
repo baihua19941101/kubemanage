@@ -89,7 +89,7 @@ type WorkloadState = {
   savePodYAML: (name: string, yaml: string) => Promise<boolean>;
   getPodLogs: (name: string, options?: PodLogOptions) => Promise<string>;
   getTerminalCapabilities: (name: string) => Promise<TerminalCapabilities>;
-  createTerminalSession: (name: string, container?: string) => Promise<{ error: string; enabled: boolean; sessionId?: string; wsPath?: string }>;
+  createTerminalSession: (name: string, container?: string) => Promise<{ error: string; enabled: boolean; sessionId?: string; wsPath?: string; ttlSeconds?: number; expiresAt?: string }>;
   getStatefulSetYAML: (name: string) => Promise<string>;
   saveStatefulSetYAML: (name: string, yaml: string) => Promise<boolean>;
   getDaemonSetYAML: (name: string) => Promise<string>;
@@ -214,7 +214,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     if (!resp.ok) {
       throw await parseApiError(resp, "创建终端会话失败");
     }
-    return resp.json() as Promise<{ error: string; enabled: boolean; sessionId?: string; wsPath?: string }>;
+    return resp.json() as Promise<{ error: string; enabled: boolean; sessionId?: string; wsPath?: string; ttlSeconds?: number; expiresAt?: string }>;
   },
   getStatefulSetYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/statefulsets/${name}/yaml`);

@@ -1,6 +1,9 @@
 package server
 
 import (
+	"context"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +22,15 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 	adapterMode := normalizeK8sAdapterMode(k8sAdapterMode)
 
 	authSvc := service.NewAuthService()
+	if store != nil && store.DB != nil {
+		authSvc = service.NewAuthServiceWithStore(
+			store.DB,
+			strings.TrimSpace(os.Getenv("KM_AUTH_JWT_SECRET")),
+			parseDurationSeconds("KM_AUTH_ACCESS_TTL_SECONDS", 3600),
+			parseDurationSeconds("KM_AUTH_REFRESH_TTL_SECONDS", 604800),
+		)
+		_ = authSvc.EnsureDefaultAdmin(context.Background())
+	}
 	auditSvc := service.NewAuditService()
 	r.Use(middleware.InjectRole(authSvc))
 
@@ -40,7 +52,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 	namespaceSvc := service.NewNamespaceService()
 	workloadSvc := service.NewWorkloadService()
 	liveWorkloadSvc := service.NewLiveWorkloadReader(clusterConnectionRepo)
-	terminalSessions := service.NewTerminalSessionStore(2 * time.Minute)
+	terminalSessions := service.NewTerminalSessionStore(parseTerminalSessionTTL())
 	liveResourceSvc := service.NewLiveResourceReader(clusterConnectionRepo)
 	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc, clusterConnectionSvc, adapterMode)
 	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, terminalSessions, adapterMode)
@@ -98,6 +110,8 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		api.GET("/pvcs/:name", resourceHandler.GetPVC)
 		api.GET("/storageclasses", resourceHandler.ListStorageClasses)
 		api.GET("/storageclasses/:name", resourceHandler.GetStorageClass)
+		api.POST("/auth/login", authHandler.Login)
+		api.POST("/auth/refresh", authHandler.Refresh)
 		api.GET("/auth/me", authHandler.GetMe)
 		api.GET("/audits", middleware.RequirePermission(authSvc, service.PermAuditRead), auditHandler.ListAudits)
 	}
@@ -109,6 +123,8 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.POST("/clusters/connections/import/token", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("import_cluster_token"), clusterConnectionHandler.ImportToken)
 		write.POST("/clusters/connections/test", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.TestConnection)
 		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("activate_cluster_connection"), clusterConnectionHandler.Activate)
+		write.POST("/auth/logout", authHandler.Logout)
+		write.POST("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("create_user"), authHandler.CreateUser)
 		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), middleware.RequireActionConfirm("create_namespace"), namespaceHandler.CreateNamespace)
 		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), middleware.RequireActionConfirm("delete_namespace"), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
@@ -150,4 +166,29 @@ func normalizeK8sAdapterMode(mode string) string {
 	default:
 		return "live"
 	}
+}
+
+func parseTerminalSessionTTL() time.Duration {
+	const defaultTTL = 120
+	value := strings.TrimSpace(os.Getenv("KM_TERMINAL_SESSION_TTL_SECONDS"))
+	if value == "" {
+		return time.Duration(defaultTTL) * time.Second
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil || seconds <= 0 {
+		return time.Duration(defaultTTL) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func parseDurationSeconds(envKey string, fallback int) time.Duration {
+	value := strings.TrimSpace(os.Getenv(envKey))
+	if value == "" {
+		return time.Duration(fallback) * time.Second
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil || seconds <= 0 {
+		return time.Duration(fallback) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
 }

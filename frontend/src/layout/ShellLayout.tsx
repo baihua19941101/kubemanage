@@ -2,6 +2,7 @@ import {
   AppBar,
   Avatar,
   Box,
+  Button,
   Breadcrumbs,
   Collapse,
   Divider,
@@ -29,6 +30,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuthStore } from "../stores/useAuthStore";
 
 const drawerWidth = 256;
 
@@ -112,6 +114,9 @@ export default function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => makeInitialOpenState(location.pathname));
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const logout = useAuthStore((s) => s.logout);
 
   const current = useMemo(() => {
     for (const section of navSections) {
@@ -237,8 +242,21 @@ export default function ShellLayout() {
               <MenuItem value="default">default-cluster</MenuItem>
             </Select>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar sx={{ width: 30, height: 30, bgcolor: "#1d4f91" }}>A</Avatar>
-              <Typography variant="body2">admin</Typography>
+              <Avatar sx={{ width: 30, height: 30, bgcolor: "#1d4f91" }}>{(user || "U").slice(0, 1).toUpperCase()}</Avatar>
+              <Stack spacing={0} sx={{ minWidth: 100 }}>
+                <Typography variant="body2">{user || "unknown"}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {role}
+                </Typography>
+              </Stack>
+              <Button
+                size="small"
+                onClick={() => {
+                  void logout();
+                }}
+              >
+                退出
+              </Button>
             </Stack>
           </Stack>
         </Toolbar>

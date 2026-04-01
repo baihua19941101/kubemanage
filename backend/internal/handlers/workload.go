@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"kubeManage/backend/internal/service"
 
@@ -259,12 +260,15 @@ func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
 			return
 		}
 		session := h.terminalSessions.Create(name, req.Container, c.GetString("km_user"), c.GetString("km_role"))
+		ttlSeconds := int(h.terminalSessions.TTL().Seconds())
 		c.JSON(http.StatusCreated, gin.H{
-			"enabled":   true,
-			"sessionId": session.ID,
-			"container": session.Container,
-			"wsPath":    "/api/v1/pods/" + name + "/terminal/ws?sessionId=" + session.ID,
-			"error":     "terminal session created",
+			"enabled":    true,
+			"sessionId":  session.ID,
+			"container":  session.Container,
+			"wsPath":     "/api/v1/pods/" + name + "/terminal/ws?sessionId=" + session.ID,
+			"ttlSeconds": ttlSeconds,
+			"expiresAt":  session.ExpiresAt.Format(time.RFC3339),
+			"error":      "terminal session created",
 		})
 		return
 	}
