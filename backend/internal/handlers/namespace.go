@@ -9,7 +9,9 @@ import (
 )
 
 type NamespaceHandler struct {
-	namespaceSvc *service.NamespaceService
+	namespaceSvc         *service.NamespaceService
+	clusterConnectionSvc *service.ClusterConnectionService
+	adapterMode          string
 }
 
 type CreateNamespaceRequest struct {
@@ -17,15 +19,32 @@ type CreateNamespaceRequest struct {
 	Labels map[string]string `json:"labels"`
 }
 
-func NewNamespaceHandler(namespaceSvc *service.NamespaceService) *NamespaceHandler {
-	return &NamespaceHandler{namespaceSvc: namespaceSvc}
+func NewNamespaceHandler(namespaceSvc *service.NamespaceService, clusterConnectionSvc *service.ClusterConnectionService, adapterMode string) *NamespaceHandler {
+	return &NamespaceHandler{
+		namespaceSvc:         namespaceSvc,
+		clusterConnectionSvc: clusterConnectionSvc,
+		adapterMode:          adapterMode,
+	}
 }
 
 func (h *NamespaceHandler) ListNamespaces(c *gin.Context) {
+	if h.adapterMode != "mock" && h.clusterConnectionSvc != nil {
+		items, err := h.clusterConnectionSvc.ListLiveNamespaces(c.Request.Context())
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{"items": items})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.namespaceSvc.List()})
 }
 
 func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace write path not enabled in real-only mode"})
+		return
+	}
 	var req CreateNamespaceRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
@@ -50,6 +69,10 @@ func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) DeleteNamespace(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	if name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "namespace name is required"})
@@ -69,6 +92,10 @@ func (h *NamespaceHandler) DeleteNamespace(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) GetNamespaceYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	content, err := h.namespaceSvc.YAML(name)
 	if err != nil {
@@ -85,6 +112,10 @@ func (h *NamespaceHandler) GetNamespaceYAML(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) DownloadNamespaceYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace yaml download path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	content, err := h.namespaceSvc.YAML(name)
 	if err != nil {

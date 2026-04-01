@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"kubeManage/backend/internal/service"
 
@@ -10,23 +11,51 @@ import (
 )
 
 type WorkloadHandler struct {
-	workloadSvc *service.WorkloadService
+	workloadSvc     *service.WorkloadService
+	liveWorkloadSvc *service.LiveWorkloadReader
+	adapterMode     string
 }
 
 type UpdateYAMLRequest struct {
 	YAML string `json:"yaml"`
 }
 
-func NewWorkloadHandler(workloadSvc *service.WorkloadService) *WorkloadHandler {
-	return &WorkloadHandler{workloadSvc: workloadSvc}
+func NewWorkloadHandler(workloadSvc *service.WorkloadService, liveWorkloadSvc *service.LiveWorkloadReader, adapterMode string) *WorkloadHandler {
+	return &WorkloadHandler{
+		workloadSvc:     workloadSvc,
+		liveWorkloadSvc: liveWorkloadSvc,
+		adapterMode:     adapterMode,
+	}
 }
 
 func (h *WorkloadHandler) ListDeployments(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListDeployments(c.Request.Context())
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{"items": items})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListDeployments()})
 }
 
 func (h *WorkloadHandler) GetDeployment(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetDeployment(c.Request.Context(), name)
+		if err == nil {
+			c.JSON(http.StatusOK, item)
+			return
+		}
+		if strings.Contains(err.Error(), "not found:") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	item, err := h.workloadSvc.GetDeployment(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -36,6 +65,10 @@ func (h *WorkloadHandler) GetDeployment(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetDeploymentYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "deployment yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetDeploymentYAML(name)
 	if err != nil {
@@ -47,6 +80,10 @@ func (h *WorkloadHandler) GetDeploymentYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdateDeploymentYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "deployment yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -66,11 +103,33 @@ func (h *WorkloadHandler) UpdateDeploymentYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) ListPods(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListPods(c.Request.Context())
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{"items": items})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListPods()})
 }
 
 func (h *WorkloadHandler) GetPod(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetPod(c.Request.Context(), name)
+		if err == nil {
+			c.JSON(http.StatusOK, item)
+			return
+		}
+		if strings.Contains(err.Error(), "not found:") {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
 	item, err := h.workloadSvc.GetPod(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -80,6 +139,10 @@ func (h *WorkloadHandler) GetPod(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetPodYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "pod yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetPodYAML(name)
 	if err != nil {
@@ -91,6 +154,10 @@ func (h *WorkloadHandler) GetPodYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdatePodYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "pod yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -109,6 +176,10 @@ func (h *WorkloadHandler) UpdatePodYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "pod logs path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	logs, err := h.workloadSvc.GetPodLogs(name, service.PodLogQuery{
 		Keyword:       c.Query("keyword"),
@@ -125,6 +196,10 @@ func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetTerminalCapabilities(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "terminal capability path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	caps, err := h.workloadSvc.GetTerminalCapabilities(name)
 	if err != nil {
@@ -135,6 +210,10 @@ func (h *WorkloadHandler) GetTerminalCapabilities(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "terminal session path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	if err := h.workloadSvc.CreateTerminalSession(name); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -147,11 +226,33 @@ func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) ListStatefulSets(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListStatefulSets(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListStatefulSets()})
 }
 
 func (h *WorkloadHandler) GetStatefulSet(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetStatefulSet(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
 	item, err := h.workloadSvc.GetStatefulSet(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -161,6 +262,10 @@ func (h *WorkloadHandler) GetStatefulSet(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetStatefulSetYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "statefulset yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetStatefulSetYAML(name)
 	if err != nil {
@@ -172,6 +277,10 @@ func (h *WorkloadHandler) GetStatefulSetYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdateStatefulSetYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "statefulset yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -190,11 +299,33 @@ func (h *WorkloadHandler) UpdateStatefulSetYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) ListDaemonSets(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListDaemonSets(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListDaemonSets()})
 }
 
 func (h *WorkloadHandler) GetDaemonSet(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetDaemonSet(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
 	item, err := h.workloadSvc.GetDaemonSet(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -204,6 +335,10 @@ func (h *WorkloadHandler) GetDaemonSet(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetDaemonSetYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "daemonset yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetDaemonSetYAML(name)
 	if err != nil {
@@ -215,6 +350,10 @@ func (h *WorkloadHandler) GetDaemonSetYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdateDaemonSetYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "daemonset yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -233,11 +372,33 @@ func (h *WorkloadHandler) UpdateDaemonSetYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) ListJobs(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListJobs(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListJobs()})
 }
 
 func (h *WorkloadHandler) GetJob(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetJob(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
 	item, err := h.workloadSvc.GetJob(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -247,6 +408,10 @@ func (h *WorkloadHandler) GetJob(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetJobYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "job yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetJobYAML(name)
 	if err != nil {
@@ -258,6 +423,10 @@ func (h *WorkloadHandler) GetJobYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdateJobYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "job yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -276,11 +445,33 @@ func (h *WorkloadHandler) UpdateJobYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) ListCronJobs(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		items, err := h.liveWorkloadSvc.ListCronJobs(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"items": h.workloadSvc.ListCronJobs()})
 }
 
 func (h *WorkloadHandler) GetCronJob(c *gin.Context) {
 	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		item, err := h.liveWorkloadSvc.GetCronJob(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
 	item, err := h.workloadSvc.GetCronJob(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -295,6 +486,10 @@ func parseBool(value string) bool {
 }
 
 func (h *WorkloadHandler) GetCronJobYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "cronjob yaml path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	yaml, err := h.workloadSvc.GetCronJobYAML(name)
 	if err != nil {
@@ -306,6 +501,10 @@ func (h *WorkloadHandler) GetCronJobYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) UpdateCronJobYAML(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "cronjob yaml write path not enabled in real-only mode"})
+		return
+	}
 	name := c.Param("name")
 	var req UpdateYAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

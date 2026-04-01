@@ -79,7 +79,7 @@ func (r *gormClusterConnectionRepo) GetActive(ctx context.Context) (infra.Cluste
 	var item infra.ClusterConnectionRecord
 	if err := r.db.WithContext(ctx).Where("is_default = ?", true).First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return infra.ClusterConnectionRecord{}, errors.New("no active cluster connection")
+			return infra.ClusterConnectionRecord{}, ErrNoActiveClusterConnection
 		}
 		return infra.ClusterConnectionRecord{}, fmt.Errorf("get active cluster connection failed: %w", err)
 	}

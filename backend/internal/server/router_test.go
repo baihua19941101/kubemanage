@@ -92,6 +92,18 @@ func TestClusters(t *testing.T) {
 	}
 }
 
+func TestClustersLiveModeWithoutActiveConnection(t *testing.T) {
+	r := NewRouter(nil, "live", "")
+	req := requestWithRole(http.MethodGet, "/api/v1/clusters", "", "viewer")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusServiceUnavailable, w.Code, w.Body.String())
+	}
+}
+
 func TestSwitchCluster(t *testing.T) {
 	r := NewRouter(nil, "mock", "")
 	req := requestWithRole(http.MethodPost, "/api/v1/clusters/switch", `{"name":"staging-cluster"}`, "admin")

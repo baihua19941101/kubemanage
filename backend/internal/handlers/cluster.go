@@ -9,20 +9,47 @@ import (
 )
 
 type ClusterHandler struct {
-	clusterSvc *service.ClusterService
+	clusterSvc           *service.ClusterService
+	clusterConnectionSvc *service.ClusterConnectionService
+	adapterMode          string
 }
 
 type SwitchClusterRequest struct {
 	Name string `json:"name"`
 }
 
-func NewClusterHandler(clusterSvc *service.ClusterService) *ClusterHandler {
+func NewClusterHandler(clusterSvc *service.ClusterService, clusterConnectionSvc *service.ClusterConnectionService, adapterMode string) *ClusterHandler {
 	return &ClusterHandler{
-		clusterSvc: clusterSvc,
+		clusterSvc:           clusterSvc,
+		clusterConnectionSvc: clusterConnectionSvc,
+		adapterMode:          adapterMode,
 	}
 }
 
 func (h *ClusterHandler) ListClusters(c *gin.Context) {
+	if live, ok, err := h.tryLiveCluster(c); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	} else if ok {
+		c.JSON(http.StatusOK, gin.H{
+			"items": []service.ClusterSummary{
+				{
+					State:             live.State,
+					Name:              live.Name,
+					Provider:          live.Provider,
+					Distro:            live.Distro,
+					KubernetesVersion: live.KubernetesVersion,
+					Architecture:      live.Architecture,
+					CPU:               live.CPU,
+					Memory:            live.Memory,
+					Pods:              live.Pods,
+				},
+			},
+			"current": live.Name,
+		})
+		return
+	}
+
 	current, err := h.clusterSvc.GetCurrent(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -36,6 +63,24 @@ func (h *ClusterHandler) ListClusters(c *gin.Context) {
 }
 
 func (h *ClusterHandler) GetCurrentCluster(c *gin.Context) {
+	if live, ok, err := h.tryLiveCluster(c); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	} else if ok {
+		c.JSON(http.StatusOK, service.ClusterSummary{
+			State:             live.State,
+			Name:              live.Name,
+			Provider:          live.Provider,
+			Distro:            live.Distro,
+			KubernetesVersion: live.KubernetesVersion,
+			Architecture:      live.Architecture,
+			CPU:               live.CPU,
+			Memory:            live.Memory,
+			Pods:              live.Pods,
+		})
+		return
+	}
+
 	current, err := h.clusterSvc.GetCurrent(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -44,7 +89,22 @@ func (h *ClusterHandler) GetCurrentCluster(c *gin.Context) {
 	c.JSON(http.StatusOK, current)
 }
 
+func (h *ClusterHandler) tryLiveCluster(c *gin.Context) (service.LiveClusterSummary, bool, error) {
+	if h.adapterMode == "mock" || h.clusterConnectionSvc == nil {
+		return service.LiveClusterSummary{}, false, nil
+	}
+	live, err := h.clusterConnectionSvc.GetLiveCluster(c.Request.Context())
+	if err == nil {
+		return live, true, nil
+	}
+	return service.LiveClusterSummary{}, false, err
+}
+
 func (h *ClusterHandler) SwitchCluster(c *gin.Context) {
+	if h.adapterMode != "mock" {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "cluster switch path not enabled in real-only mode"})
+		return
+	}
 	var req SwitchClusterRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})

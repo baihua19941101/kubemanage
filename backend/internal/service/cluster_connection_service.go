@@ -20,6 +20,8 @@ const (
 	ClusterConnectionModeToken      ClusterConnectionMode = "token"
 )
 
+var ErrNoActiveClusterConnection = errors.New("no active cluster connection")
+
 type ClusterConnection struct {
 	ID                uint      `json:"id"`
 	Name              string    `json:"name"`
@@ -70,12 +72,17 @@ type ConnectionTestResult struct {
 }
 
 type LiveClusterSummary struct {
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	Status    string `json:"status"`
-	Nodes     int    `json:"nodes"`
-	APIServer string `json:"apiServer"`
-	Source    string `json:"source"`
+	State             string `json:"state"`
+	Name              string `json:"name"`
+	Provider          string `json:"provider"`
+	Distro            string `json:"distro"`
+	KubernetesVersion string `json:"kubernetesVersion"`
+	Architecture      string `json:"architecture"`
+	CPU               string `json:"cpu"`
+	Memory            string `json:"memory"`
+	Pods              int    `json:"pods"`
+	APIServer         string `json:"apiServer"`
+	Source            string `json:"source"`
 }
 
 type ClusterConnectionRepository interface {
@@ -318,7 +325,7 @@ func (r *memoryClusterConnectionRepo) GetActive(_ context.Context) (infra.Cluste
 			return item, nil
 		}
 	}
-	return infra.ClusterConnectionRecord{}, errors.New("no active cluster connection")
+	return infra.ClusterConnectionRecord{}, ErrNoActiveClusterConnection
 }
 
 func (r *memoryClusterConnectionRepo) UpdateStatus(_ context.Context, id uint, status string, checkedAt time.Time, lastError string) error {

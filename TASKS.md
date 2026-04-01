@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第三阶段（P302 已完成，P303 待开始）
+- 阶段：第三阶段（P303 已完成，P304 待开始）
 - 更新时间：2026-04-01
 
 ## 任务列表
@@ -34,7 +34,7 @@
 | P207 | 第二阶段任务7：联调与验收 | 已完成 | 已完成第二阶段统一验收脚本与整体验收 |
 | P301 | 第三阶段任务1：真实集群接入与导入 | 已完成（基础闭环） | 已完成基础闭环与验收，后续深化拆分到 P302/P303 |
 | P302 | 第三阶段任务2：k8s client adapter 与连接配置存储 | 已完成 | 已完成 Adapter 分层、敏感字段加密存储、mock/live/auto 模式归一化与回归验收 |
-| P303 | 第三阶段任务3：真实资源读链路切换 | 待开始 | Cluster/Namespace/Workloads/Service Discovery/Storage |
+| P303 | 第三阶段任务3：真实资源读链路切换 | 已完成 | 已完成 Cluster/Namespace/Workloads/Service Discovery/Storage 主读接口 live 优先切换 |
 | P304 | 第三阶段任务4：真实写操作安全化 | 待开始 | 确认、失败回显、审计增强 |
 | P305 | 第三阶段任务5：真实日志与终端能力 | 待开始 | 多容器、流式日志、exec/terminal |
 | P306 | 第三阶段任务6：第三阶段联调与验收 | 待开始 | 第三阶段统一回归与验收 |
@@ -92,6 +92,16 @@
 | T064 | P302-B：连接配置存储深化 | 已完成 | 已新增 KM_SECRET_KEY 透明加解密与历史明文兼容读取 |
 | T065 | P302-C：数据源切换策略固化 | 已完成 | 已增加 mock/live/auto 模式归一化解析与路由层统一选择 |
 | T066 | P302-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build、scripts/p302_smoke_test.sh |
+| T067 | P303 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p303-live-read-switch，已通过 docker exec mysql8 完成备份 kubemanage-20260401-154202-p303.sql |
+| T068 | P303-A：Cluster/Namespace 主链路切换 | 已完成 | 已将 /clusters 与 /namespaces 主接口切换为 live 优先读取，并补无激活连接错误语义测试 |
+| T069 | P303-B：Workloads/Service Discovery/Storage 读链路扩展 | 已完成 | 已完成 Workloads 全量列表/详情与 Service Discovery/Storage 主读接口 live 优先切换 |
+| T070 | P303-C：回归与验收 | 已完成 | 已通过 go test ./... 与 npm run build（real-only 读链路） |
+| T071 | real-only 需求变更：停止 mock 数据链路 | 已完成 | 已移除主读接口的 mock 回退逻辑，并统一为真实数据依赖 |
+| T072 | real-only 需求变更：文档与验收口径同步 | 已完成 | README/TASKS 已同步 real-only 约束与当前进展 |
+| T073 | P303 二次优化：真实连接管理页去 mock 展示 | 已完成 | 已清理示例集群与 Live 概览，页面仅保留真实连接与真实集群列表 |
+| T074 | P303 二次优化：集群列表字段扩展 | 已完成 | 已展示 State/Name/Provider/Distro/Kubernetes Version/Architecture/CPU/Memory/Pods |
+| T075 | P303 二次优化：清理非 test1 历史连接数据 | 已完成 | 已清理 cluster_connections 中 test1 之外的历史连接记录，仅保留 test1 |
+| T076 | P303 二次优化：集群列表字段组合收敛 | 已完成 | 已收敛为 Provider/Distro 与 Kubernetes Version/Architecture 两个组合字段 |
 
 ## 完成记录
 
@@ -187,3 +197,25 @@
 - 2026-04-01：完成 T065（新增 mock/live/auto adapter 模式归一化解析）
 - 2026-04-01：完成 T066（通过 go test ./...、npm run build、scripts/p302_smoke_test.sh）
 - 2026-04-01：完成 P302（k8s adapter 与连接配置存储深化）
+- 2026-04-01：完成 T067（创建 feature/p303-live-read-switch，并通过 docker exec mysql8 生成 backups/kubemanage-20260401-154202-p303.sql）
+- 2026-04-01：启动 T068（P303-A：Cluster/Namespace 主链路切换）
+- 2026-04-01：完成 T068（/clusters、/namespaces 主接口切换为 live 优先读取，并通过 go test）
+- 2026-04-01：启动 T069（Workloads/Service Discovery/Storage 读链路扩展）
+- 2026-04-01：完成 T069 第一批（/deployments、/pods 主接口切换为 live 优先读取，并通过 go test）
+- 2026-04-01：完成 real-only 变更前置备份（backups/kubemanage-20260401-155246-real-only.sql）
+- 2026-04-01：启动 T071（停止 mock 数据链路，统一真实数据依赖）
+- 2026-04-01：完成 T072（README/TASKS 同步 real-only 约束与状态）
+- 2026-04-01：完成 T069（补齐 Workloads 其余资源与 Service Discovery/Storage 主读接口 live 优先切换）
+- 2026-04-01：完成 T071（移除主读接口 mock 回退逻辑，默认模式收敛为 live）
+- 2026-04-01：完成 T070（go test ./... 与 npm run build 通过）
+- 2026-04-01：完成 P303（真实资源读链路切换）
+- 2026-04-01：完成 T073（真实连接管理页去 mock 展示，移除 Live 真实数据概览）
+- 2026-04-01：完成 T074（集群列表字段扩展为 State/Name/Provider/Distro/Kubernetes Version/Architecture/CPU/Memory/Pods）
+- 2026-04-01：完成 P303 二次优化（真实连接管理页 real-only 收口）
+- 2026-04-01：完成需求变更前置备份（backups/kubemanage-20260401-162126-cleanup-non-test1.sql）
+- 2026-04-01：启动 T075（清理非 test1 历史连接数据）
+- 2026-04-01：启动 T076（集群列表字段组合收敛）
+- 2026-04-01：完成 T075（数据库仅保留 test1 连接，并保持为默认激活）
+- 2026-04-01：完成 T076（前端集群列表字段组合收敛）
+- 2026-04-01：完成需求变更前置备份（backups/kubemanage-20260401-161043-real-cluster-fields.sql）
+- 2026-04-01：启动 T073（真实连接管理页去 mock 展示）

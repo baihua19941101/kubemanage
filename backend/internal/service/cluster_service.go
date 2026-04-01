@@ -12,10 +12,15 @@ import (
 const currentClusterKey = "km:current_cluster"
 
 type ClusterSummary struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Status  string `json:"status"`
-	Nodes   int    `json:"nodes"`
+	State             string `json:"state"`
+	Name              string `json:"name"`
+	Provider          string `json:"provider"`
+	Distro            string `json:"distro"`
+	KubernetesVersion string `json:"kubernetesVersion"`
+	Architecture      string `json:"architecture"`
+	CPU               string `json:"cpu"`
+	Memory            string `json:"memory"`
+	Pods              int    `json:"pods"`
 }
 
 type ClusterService struct {
@@ -27,16 +32,26 @@ type ClusterService struct {
 func NewClusterService(redisClient *redis.Client) *ClusterService {
 	defaultClusters := []ClusterSummary{
 		{
-			Name:    "demo-cluster",
-			Version: "v1.30.1",
-			Status:  "ready",
-			Nodes:   3,
+			State:             "Ready",
+			Name:              "demo-cluster",
+			Provider:          "mock",
+			Distro:            "mock-distro",
+			KubernetesVersion: "v1.30.1",
+			Architecture:      "amd64",
+			CPU:               "8",
+			Memory:            "16.0Gi",
+			Pods:              42,
 		},
 		{
-			Name:    "staging-cluster",
-			Version: "v1.29.8",
-			Status:  "ready",
-			Nodes:   2,
+			State:             "Ready",
+			Name:              "staging-cluster",
+			Provider:          "mock",
+			Distro:            "mock-distro",
+			KubernetesVersion: "v1.29.8",
+			Architecture:      "amd64",
+			CPU:               "4",
+			Memory:            "8.0Gi",
+			Pods:              21,
 		},
 	}
 
