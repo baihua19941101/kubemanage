@@ -5,7 +5,7 @@ import PageScaffold from "../components/framework/PageScaffold";
 import ResourceTable from "../components/framework/ResourceTable";
 import { useResourceStore } from "../stores/useResourceStore";
 
-type Mode = "services" | "configmaps" | "secrets";
+type Mode = "services" | "ingresses" | "hpas" | "configmaps" | "secrets";
 
 type ServiceItem = {
   name: string;
@@ -32,17 +32,56 @@ type SecretItem = {
   age: string;
 };
 
+type IngressItem = {
+  name: string;
+  namespace: string;
+  className: string;
+  hosts: string[];
+  address: string;
+  tls: boolean;
+  age: string;
+};
+
+type HPAItem = {
+  name: string;
+  namespace: string;
+  targetKind: string;
+  targetName: string;
+  minReplicas: number;
+  maxReplicas: number;
+  currentReplicas: number;
+  targetCPUPercent: number;
+  currentCPUPercent: number;
+  age: string;
+};
+
+type HPATarget = {
+  kind: string;
+  name: string;
+  namespace: string;
+  currentReplicas: number;
+  desiredReplicas: number;
+};
+
 export default function ResourcePage() {
   const services = useResourceStore((s) => s.services);
+  const ingresses = useResourceStore((s) => s.ingresses);
+  const hpas = useResourceStore((s) => s.hpas);
   const configMaps = useResourceStore((s) => s.configMaps);
   const secrets = useResourceStore((s) => s.secrets);
   const loading = useResourceStore((s) => s.loading);
   const error = useResourceStore((s) => s.error);
   const load = useResourceStore((s) => s.load);
+  const getIngressServices = useResourceStore((s) => s.getIngressServices);
+  const getHPATarget = useResourceStore((s) => s.getHPATarget);
   const [mode, setMode] = useState<Mode>("services");
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [selectedIngress, setSelectedIngress] = useState<IngressItem | null>(null);
+  const [selectedHPA, setSelectedHPA] = useState<HPAItem | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<ConfigMapItem | null>(null);
   const [selectedSecret, setSelectedSecret] = useState<SecretItem | null>(null);
+  const [ingressServices, setIngressServices] = useState<ServiceItem[]>([]);
+  const [hpaTarget, setHPATarget] = useState<HPATarget | null>(null);
 
   useEffect(() => {
     void load();
@@ -76,6 +115,26 @@ export default function ResourcePage() {
     ],
     []
   );
+  const ingressColumns = useMemo(
+    () => [
+      { key: "name", header: "名称", render: (r: IngressItem) => r.name },
+      { key: "ns", header: "命名空间", render: (r: IngressItem) => r.namespace },
+      { key: "class", header: "Class", render: (r: IngressItem) => r.className },
+      { key: "hosts", header: "Hosts", render: (r: IngressItem) => r.hosts.join(", ") },
+      { key: "tls", header: "TLS", render: (r: IngressItem) => (r.tls ? "是" : "否") }
+    ],
+    []
+  );
+  const hpaColumns = useMemo(
+    () => [
+      { key: "name", header: "名称", render: (r: HPAItem) => r.name },
+      { key: "ns", header: "命名空间", render: (r: HPAItem) => r.namespace },
+      { key: "target", header: "目标", render: (r: HPAItem) => `${r.targetKind}/${r.targetName}` },
+      { key: "replicas", header: "副本", render: (r: HPAItem) => `${r.currentReplicas} (${r.minReplicas}-${r.maxReplicas})` },
+      { key: "cpu", header: "CPU", render: (r: HPAItem) => `${r.currentCPUPercent}% / ${r.targetCPUPercent}%` }
+    ],
+    []
+  );
 
   return (
     <>
@@ -89,6 +148,18 @@ export default function ResourcePage() {
               onClick={() => setMode("services")}
             >
               Service
+            </Button>
+            <Button
+              variant={mode === "ingresses" ? "contained" : "outlined"}
+              onClick={() => setMode("ingresses")}
+            >
+              Ingress
+            </Button>
+            <Button
+              variant={mode === "hpas" ? "contained" : "outlined"}
+              onClick={() => setMode("hpas")}
+            >
+              HPA
             </Button>
             <Button
               variant={mode === "configmaps" ? "contained" : "outlined"}
@@ -133,6 +204,30 @@ export default function ResourcePage() {
             onRowClick={(r) => setSelectedSecret(r)}
           />
         )}
+        {mode === "ingresses" && (
+          <ResourceTable
+            loading={loading}
+            rows={ingresses}
+            rowKey={(r) => r.name}
+            columns={ingressColumns}
+            onRowClick={async (r) => {
+              setSelectedIngress(r);
+              setIngressServices(await getIngressServices(r.name));
+            }}
+          />
+        )}
+        {mode === "hpas" && (
+          <ResourceTable
+            loading={loading}
+            rows={hpas}
+            rowKey={(r) => r.name}
+            columns={hpaColumns}
+            onRowClick={async (r) => {
+              setSelectedHPA(r);
+              setHPATarget(await getHPATarget(r.name));
+            }}
+          />
+        )}
       </PageScaffold>
 
       <DetailDrawer
@@ -148,6 +243,63 @@ export default function ResourcePage() {
             <Typography variant="body2">ClusterIP：{selectedService.clusterIP}</Typography>
             <Typography variant="body2">端口：{selectedService.ports}</Typography>
             <Typography variant="body2">关联 Pod：{selectedService.pods}</Typography>
+          </Stack>
+        )}
+      </DetailDrawer>
+
+      <DetailDrawer
+        open={Boolean(selectedIngress)}
+        title={selectedIngress ? `Ingress 详情 - ${selectedIngress.name}` : "Ingress 详情"}
+        onClose={() => {
+          setSelectedIngress(null);
+          setIngressServices([]);
+        }}
+      >
+        {selectedIngress && (
+          <Stack spacing={1}>
+            <Typography variant="body2">名称：{selectedIngress.name}</Typography>
+            <Typography variant="body2">命名空间：{selectedIngress.namespace}</Typography>
+            <Typography variant="body2">Class：{selectedIngress.className}</Typography>
+            <Typography variant="body2">Hosts：{selectedIngress.hosts.join(", ")}</Typography>
+            <Typography variant="body2">Address：{selectedIngress.address}</Typography>
+            <Typography variant="body2">TLS：{selectedIngress.tls ? "是" : "否"}</Typography>
+            <Typography variant="body2" color="text.secondary">关联 Service：</Typography>
+            {ingressServices.map((item) => (
+              <Typography key={item.name} variant="body2" color="text.secondary">
+                {item.namespace}/{item.name} ({item.ports})
+              </Typography>
+            ))}
+          </Stack>
+        )}
+      </DetailDrawer>
+
+      <DetailDrawer
+        open={Boolean(selectedHPA)}
+        title={selectedHPA ? `HPA 详情 - ${selectedHPA.name}` : "HPA 详情"}
+        onClose={() => {
+          setSelectedHPA(null);
+          setHPATarget(null);
+        }}
+      >
+        {selectedHPA && (
+          <Stack spacing={1}>
+            <Typography variant="body2">名称：{selectedHPA.name}</Typography>
+            <Typography variant="body2">命名空间：{selectedHPA.namespace}</Typography>
+            <Typography variant="body2">目标：{selectedHPA.targetKind}/{selectedHPA.targetName}</Typography>
+            <Typography variant="body2">副本范围：{selectedHPA.minReplicas} - {selectedHPA.maxReplicas}</Typography>
+            <Typography variant="body2">当前副本：{selectedHPA.currentReplicas}</Typography>
+            <Typography variant="body2">CPU：{selectedHPA.currentCPUPercent}% / {selectedHPA.targetCPUPercent}%</Typography>
+            {hpaTarget && (
+              <>
+                <Typography variant="body2" color="text.secondary">关联目标：</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {hpaTarget.namespace}/{hpaTarget.kind}/{hpaTarget.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  当前/期望副本：{hpaTarget.currentReplicas}/{hpaTarget.desiredReplicas}
+                </Typography>
+              </>
+            )}
           </Stack>
         )}
       </DetailDrawer>

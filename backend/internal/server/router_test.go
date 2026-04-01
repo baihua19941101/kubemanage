@@ -194,6 +194,34 @@ func TestResourceEndpoints(t *testing.T) {
 	if w4.Code != http.StatusOK {
 		t.Fatalf("get secret failed: %d body=%s", w4.Code, w4.Body.String())
 	}
+
+	req5, _ := http.NewRequest(http.MethodGet, "/api/v1/ingresses", nil)
+	w5 := httptest.NewRecorder()
+	r.ServeHTTP(w5, req5)
+	if w5.Code != http.StatusOK {
+		t.Fatalf("list ingresses failed: %d body=%s", w5.Code, w5.Body.String())
+	}
+
+	req6, _ := http.NewRequest(http.MethodGet, "/api/v1/ingresses/web-api-ing/services", nil)
+	w6 := httptest.NewRecorder()
+	r.ServeHTTP(w6, req6)
+	if w6.Code != http.StatusOK {
+		t.Fatalf("list ingress services failed: %d body=%s", w6.Code, w6.Body.String())
+	}
+
+	req7, _ := http.NewRequest(http.MethodGet, "/api/v1/hpas", nil)
+	w7 := httptest.NewRecorder()
+	r.ServeHTTP(w7, req7)
+	if w7.Code != http.StatusOK {
+		t.Fatalf("list hpas failed: %d body=%s", w7.Code, w7.Body.String())
+	}
+
+	req8, _ := http.NewRequest(http.MethodGet, "/api/v1/hpas/web-api-hpa/target", nil)
+	w8 := httptest.NewRecorder()
+	r.ServeHTTP(w8, req8)
+	if w8.Code != http.StatusOK {
+		t.Fatalf("get hpa target failed: %d body=%s", w8.Code, w8.Body.String())
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {

@@ -25,10 +25,43 @@ type SecretItem struct {
 	Age       string            `json:"age"`
 }
 
+type IngressItem struct {
+	Name      string   `json:"name"`
+	Namespace string   `json:"namespace"`
+	ClassName string   `json:"className"`
+	Hosts     []string `json:"hosts"`
+	Address   string   `json:"address"`
+	TLS       bool     `json:"tls"`
+	Age       string   `json:"age"`
+}
+
+type HPAItem struct {
+	Name               string `json:"name"`
+	Namespace          string `json:"namespace"`
+	TargetKind         string `json:"targetKind"`
+	TargetName         string `json:"targetName"`
+	MinReplicas        int    `json:"minReplicas"`
+	MaxReplicas        int    `json:"maxReplicas"`
+	CurrentReplicas    int    `json:"currentReplicas"`
+	TargetCPUPercent   int    `json:"targetCPUPercent"`
+	CurrentCPUPercent  int    `json:"currentCPUPercent"`
+	Age                string `json:"age"`
+}
+
+type HPATarget struct {
+	Kind            string `json:"kind"`
+	Name            string `json:"name"`
+	Namespace       string `json:"namespace"`
+	CurrentReplicas int    `json:"currentReplicas"`
+	DesiredReplicas int    `json:"desiredReplicas"`
+}
+
 type ResourceService struct {
 	services   []ServiceItem
 	configMaps []ConfigMapItem
 	secrets    []SecretItem
+	ingresses  []IngressItem
+	hpas       []HPAItem
 }
 
 func NewResourceService() *ResourceService {
@@ -60,6 +93,52 @@ func NewResourceService() *ResourceService {
 				Data: map[string]string{
 					"REDIS_PASSWORD": maskSecret("redis-pass"),
 				},
+			},
+		},
+		ingresses: []IngressItem{
+			{
+				Name:      "web-api-ing",
+				Namespace: "default",
+				ClassName: "nginx",
+				Hosts:     []string{"api.example.com"},
+				Address:   "10.0.0.88",
+				TLS:       true,
+				Age:       "6d",
+			},
+			{
+				Name:      "worker-ing",
+				Namespace: "dev",
+				ClassName: "nginx",
+				Hosts:     []string{"worker.example.com"},
+				Address:   "10.0.0.89",
+				TLS:       false,
+				Age:       "1d",
+			},
+		},
+		hpas: []HPAItem{
+			{
+				Name:              "web-api-hpa",
+				Namespace:         "default",
+				TargetKind:        "Deployment",
+				TargetName:        "web-api",
+				MinReplicas:       2,
+				MaxReplicas:       6,
+				CurrentReplicas:   3,
+				TargetCPUPercent:  70,
+				CurrentCPUPercent: 52,
+				Age:               "5d",
+			},
+			{
+				Name:              "worker-hpa",
+				Namespace:         "dev",
+				TargetKind:        "Deployment",
+				TargetName:        "task-worker",
+				MinReplicas:       1,
+				MaxReplicas:       4,
+				CurrentReplicas:   2,
+				TargetCPUPercent:  75,
+				CurrentCPUPercent: 63,
+				Age:               "20h",
 			},
 		},
 	}
@@ -102,6 +181,65 @@ func (s *ResourceService) GetSecret(name string) (SecretItem, bool) {
 		}
 	}
 	return SecretItem{}, false
+}
+
+func (s *ResourceService) ListIngresses() []IngressItem {
+	return append([]IngressItem(nil), s.ingresses...)
+}
+
+func (s *ResourceService) GetIngress(name string) (IngressItem, bool) {
+	for _, item := range s.ingresses {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return IngressItem{}, false
+}
+
+func (s *ResourceService) ListHPAs() []HPAItem {
+	return append([]HPAItem(nil), s.hpas...)
+}
+
+func (s *ResourceService) GetHPA(name string) (HPAItem, bool) {
+	for _, item := range s.hpas {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return HPAItem{}, false
+}
+
+func (s *ResourceService) ListIngressServices(name string) ([]ServiceItem, bool) {
+	switch name {
+	case "web-api-ing":
+		item, ok := s.GetService("web-api-svc")
+		if !ok {
+			return nil, false
+		}
+		return []ServiceItem{item}, true
+	case "worker-ing":
+		item, ok := s.GetService("worker-svc")
+		if !ok {
+			return nil, false
+		}
+		return []ServiceItem{item}, true
+	default:
+		return nil, false
+	}
+}
+
+func (s *ResourceService) GetHPATarget(name string) (HPATarget, bool) {
+	hpa, ok := s.GetHPA(name)
+	if !ok {
+		return HPATarget{}, false
+	}
+	return HPATarget{
+		Kind:            hpa.TargetKind,
+		Name:            hpa.TargetName,
+		Namespace:       hpa.Namespace,
+		CurrentReplicas: hpa.CurrentReplicas,
+		DesiredReplicas: hpa.CurrentReplicas,
+	}, true
 }
 
 func maskSecret(value string) string {
