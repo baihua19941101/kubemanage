@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第三阶段（P303 已完成，P304 待开始）
+- 阶段：第三阶段（P304 已完成，P305 待开始）
 - 更新时间：2026-04-01
 
 ## 任务列表
@@ -35,7 +35,7 @@
 | P301 | 第三阶段任务1：真实集群接入与导入 | 已完成（基础闭环） | 已完成基础闭环与验收，后续深化拆分到 P302/P303 |
 | P302 | 第三阶段任务2：k8s client adapter 与连接配置存储 | 已完成 | 已完成 Adapter 分层、敏感字段加密存储、mock/live/auto 模式归一化与回归验收 |
 | P303 | 第三阶段任务3：真实资源读链路切换 | 已完成 | 已完成 Cluster/Namespace/Workloads/Service Discovery/Storage 主读接口 live 优先切换 |
-| P304 | 第三阶段任务4：真实写操作安全化 | 待开始 | 确认、失败回显、审计增强 |
+| P304 | 第三阶段任务4：真实写操作安全化 | 已完成 | 已完成写操作确认、失败回显与审计增强，并通过 p304 冒烟验证 |
 | P305 | 第三阶段任务5：真实日志与终端能力 | 待开始 | 多容器、流式日志、exec/terminal |
 | P306 | 第三阶段任务6：第三阶段联调与验收 | 待开始 | 第三阶段统一回归与验收 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
@@ -102,6 +102,11 @@
 | T074 | P303 二次优化：集群列表字段扩展 | 已完成 | 已展示 State/Name/Provider/Distro/Kubernetes Version/Architecture/CPU/Memory/Pods |
 | T075 | P303 二次优化：清理非 test1 历史连接数据 | 已完成 | 已清理 cluster_connections 中 test1 之外的历史连接记录，仅保留 test1 |
 | T076 | P303 二次优化：集群列表字段组合收敛 | 已完成 | 已收敛为 Provider/Distro 与 Kubernetes Version/Architecture 两个组合字段 |
+| T077 | P304 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p304-write-safety，已备份 kubemanage-20260401-162722-p304.sql |
+| T078 | P304-A：写操作确认机制 | 已完成 | 关键写接口已接入 X-Action-Confirm 校验 |
+| T079 | P304-B：失败回显增强 | 已完成 | 权限/确认失败响应已增加 requestId/code/hint |
+| T080 | P304-C：审计字段增强 | 已完成 | 审计记录新增 requestId/namespace/error 字段 |
+| T081 | P304-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build、scripts/p304_smoke_test.sh |
 
 ## 完成记录
 
@@ -217,5 +222,12 @@
 - 2026-04-01：启动 T076（集群列表字段组合收敛）
 - 2026-04-01：完成 T075（数据库仅保留 test1 连接，并保持为默认激活）
 - 2026-04-01：完成 T076（前端集群列表字段组合收敛）
+- 2026-04-01：完成 T077（创建 feature/p304-write-safety，并备份 kubemanage-20260401-162722-p304.sql）
+- 2026-04-01：启动 T078（写操作确认机制）
+- 2026-04-01：完成 T078（关键写路由确认头校验接入）
+- 2026-04-01：完成 T079（失败响应增加 requestId/code/hint）
+- 2026-04-01：完成 T080（审计记录增加 requestId/namespace/error）
+- 2026-04-01：完成 T081（go test ./...、npm run build、scripts/p304_smoke_test.sh 通过）
+- 2026-04-01：完成 P304（真实写操作安全化）
 - 2026-04-01：完成需求变更前置备份（backups/kubemanage-20260401-161043-real-cluster-fields.sql）
 - 2026-04-01：启动 T073（真实连接管理页去 mock 展示）

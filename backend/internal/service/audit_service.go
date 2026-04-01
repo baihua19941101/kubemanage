@@ -8,11 +8,14 @@ import (
 
 type AuditRecord struct {
 	Time       string `json:"time"`
+	RequestID  string `json:"requestId,omitempty"`
 	User       string `json:"user"`
 	Role       string `json:"role"`
 	Method     string `json:"method"`
 	Path       string `json:"path"`
+	Namespace  string `json:"namespace,omitempty"`
 	StatusCode int    `json:"statusCode"`
+	Error      string `json:"error,omitempty"`
 }
 
 type AuditService struct {
@@ -35,17 +38,20 @@ func NewAuditService() *AuditService {
 	}
 }
 
-func (s *AuditService) Append(user, role, method, path string, statusCode int) {
+func (s *AuditService) Append(requestID, user, role, method, path, namespace string, statusCode int, errMsg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.records = append(s.records, AuditRecord{
 		Time:       time.Now().Format(time.RFC3339),
+		RequestID:  requestID,
 		User:       user,
 		Role:       role,
 		Method:     method,
 		Path:       path,
+		Namespace:  namespace,
 		StatusCode: statusCode,
+		Error:      errMsg,
 	})
 }
 
