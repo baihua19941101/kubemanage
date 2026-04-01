@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(store *infra.Store) *gin.Engine {
+func NewRouter(store *infra.Store, k8sAdapterMode string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
@@ -25,7 +25,9 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	var clusterConnectionAdapter service.K8sAdapter
 	if store != nil && store.DB != nil {
 		clusterConnectionRepo = service.NewGormClusterConnectionRepo(store.DB)
-		clusterConnectionAdapter = service.NewRealK8sAdapter()
+		if k8sAdapterMode == "live" {
+			clusterConnectionAdapter = service.NewRealK8sAdapter()
+		}
 	}
 	clusterConnectionSvc := service.NewClusterConnectionService(clusterConnectionRepo, clusterConnectionAdapter)
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
