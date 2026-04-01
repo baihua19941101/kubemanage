@@ -7,6 +7,7 @@ type AuthState = {
   canNamespaceWrite: () => boolean;
   canWorkloadWrite: () => boolean;
   canAuditRead: () => boolean;
+  allowedNamespaces: () => string[];
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -23,5 +24,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const role = get().role;
     return role === "admin" || role === "operator";
   },
-  canAuditRead: () => get().role === "admin"
+  canAuditRead: () => get().role === "admin",
+  allowedNamespaces: () => {
+    const role = get().role;
+    if (role === "admin") return ["*"];
+    if (role === "operator") return ["dev"];
+    return [];
+  }
 }));

@@ -85,12 +85,14 @@ type WorkloadService struct {
 	jobYAML        map[string]string
 	cronJobYAML    map[string]string
 	podLogs        map[string]string
+	podLogFollow   map[string]int
 }
 
 type PodLogQuery struct {
 	Keyword       string
 	CaseSensitive bool
 	MatchOnly     bool
+	Follow        bool
 }
 
 type TerminalCapabilities struct {
@@ -235,6 +237,7 @@ func NewWorkloadService() *WorkloadService {
 		jobYAML:        jobYAML,
 		cronJobYAML:    cronJobYAML,
 		podLogs:        podLogs,
+		podLogFollow:   map[string]int{},
 	}
 	s.refreshAges()
 	return s
@@ -394,6 +397,10 @@ func (s *WorkloadService) GetPodLogs(name string, query PodLogQuery) (string, er
 	if !ok {
 		return "", fmt.Errorf("pod not found: %s", name)
 	}
+	if query.Follow {
+		s.podLogFollow[name]++
+		logs = logs + fmt.Sprintf("[DEBUG] follow refresh tick=%d pod=%s\n", s.podLogFollow[name], name)
+	}
 	if strings.TrimSpace(query.Keyword) == "" {
 		return logs, nil
 	}
@@ -442,6 +449,60 @@ func (s *WorkloadService) CreateTerminalSession(name string) error {
 		return fmt.Errorf("pod not found: %s", name)
 	}
 	return nil
+}
+
+func (s *WorkloadService) DeploymentNamespace(name string) (string, error) {
+	for _, item := range s.deployments {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("deployment not found: %s", name)
+}
+
+func (s *WorkloadService) PodNamespace(name string) (string, error) {
+	for _, item := range s.pods {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("pod not found: %s", name)
+}
+
+func (s *WorkloadService) StatefulSetNamespace(name string) (string, error) {
+	for _, item := range s.statefulSets {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("statefulset not found: %s", name)
+}
+
+func (s *WorkloadService) DaemonSetNamespace(name string) (string, error) {
+	for _, item := range s.daemonSets {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("daemonset not found: %s", name)
+}
+
+func (s *WorkloadService) JobNamespace(name string) (string, error) {
+	for _, item := range s.jobs {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("job not found: %s", name)
+}
+
+func (s *WorkloadService) CronJobNamespace(name string) (string, error) {
+	for _, item := range s.cronJobs {
+		if item.Name == name {
+			return item.Namespace, nil
+		}
+	}
+	return "", fmt.Errorf("cronjob not found: %s", name)
 }
 
 func (s *WorkloadService) refreshAges() {

@@ -62,6 +62,7 @@ type PodLogOptions = {
   keyword?: string;
   caseSensitive?: boolean;
   matchOnly?: boolean;
+  follow?: boolean;
 };
 
 type TerminalCapabilities = {
@@ -175,6 +176,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     if (options?.keyword) params.set("keyword", options.keyword);
     if (options?.caseSensitive) params.set("caseSensitive", "true");
     if (options?.matchOnly) params.set("matchOnly", "true");
+    if (options?.follow) params.set("follow", "true");
     const query = params.toString();
     const resp = await apiFetch(`/api/v1/pods/${name}/logs${query ? `?${query}` : ""}`);
     if (!resp.ok) {

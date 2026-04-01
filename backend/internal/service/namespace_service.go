@@ -97,6 +97,11 @@ func (s *NamespaceService) YAML(name string) (string, error) {
 	), nil
 }
 
+func (s *NamespaceService) Exists(name string) bool {
+	_, ok := s.find(name)
+	return ok
+}
+
 func (s *NamespaceService) find(name string) (Namespace, bool) {
 	for _, ns := range s.namespaces {
 		if ns.Name == name {

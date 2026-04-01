@@ -22,8 +22,10 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		clusterSvc = service.NewClusterService(store.Redis)
 	}
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
-	namespaceHandler := handlers.NewNamespaceHandler(service.NewNamespaceService())
-	workloadHandler := handlers.NewWorkloadHandler(service.NewWorkloadService())
+	namespaceSvc := service.NewNamespaceService()
+	workloadSvc := service.NewWorkloadService()
+	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc)
+	workloadHandler := handlers.NewWorkloadHandler(workloadSvc)
 	resourceHandler := handlers.NewResourceHandler(service.NewResourceService())
 	authHandler := handlers.NewAuthHandler(authSvc)
 	auditHandler := handlers.NewAuditHandler(auditSvc)
@@ -81,15 +83,29 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	write := api.Group("", middleware.WriteAudit(auditSvc))
 	{
 		write.POST("/clusters/switch", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), clusterHandler.SwitchCluster)
-		write.POST("/namespaces", middleware.RequirePermission(authSvc, service.PermNamespaceWrite), namespaceHandler.CreateNamespace)
-		write.DELETE("/namespaces/:name", middleware.RequirePermission(authSvc, service.PermNamespaceWrite), namespaceHandler.DeleteNamespace)
-		write.PUT("/deployments/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdateDeploymentYAML)
-		write.PUT("/pods/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdatePodYAML)
-		write.POST("/pods/:name/terminal/sessions", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.CreateTerminalSession)
-		write.PUT("/statefulsets/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdateStatefulSetYAML)
-		write.PUT("/daemonsets/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdateDaemonSetYAML)
-		write.PUT("/jobs/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdateJobYAML)
-		write.PUT("/cronjobs/:name/yaml", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), workloadHandler.UpdateCronJobYAML)
+		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), namespaceHandler.CreateNamespace)
+		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), namespaceHandler.DeleteNamespace)
+		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.DeploymentNamespace(c.Param("name"))
+		}), workloadHandler.UpdateDeploymentYAML)
+		write.PUT("/pods/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.PodNamespace(c.Param("name"))
+		}), workloadHandler.UpdatePodYAML)
+		write.POST("/pods/:name/terminal/sessions", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.PodNamespace(c.Param("name"))
+		}), workloadHandler.CreateTerminalSession)
+		write.PUT("/statefulsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.StatefulSetNamespace(c.Param("name"))
+		}), workloadHandler.UpdateStatefulSetYAML)
+		write.PUT("/daemonsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.DaemonSetNamespace(c.Param("name"))
+		}), workloadHandler.UpdateDaemonSetYAML)
+		write.PUT("/jobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.JobNamespace(c.Param("name"))
+		}), workloadHandler.UpdateJobYAML)
+		write.PUT("/cronjobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			return workloadSvc.CronJobNamespace(c.Param("name"))
+		}), workloadHandler.UpdateCronJobYAML)
 	}
 
 	return r
