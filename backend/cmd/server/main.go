@@ -20,7 +20,7 @@ func main() {
 		}
 	}()
 
-	r := server.NewRouter(store)
+	r := server.NewRouter(store, cfg.K8sAdapterMode)
 
 	log.Printf("kubeManage backend start on %s", cfg.ListenAddr)
 	if err := r.Run(cfg.ListenAddr); err != nil {

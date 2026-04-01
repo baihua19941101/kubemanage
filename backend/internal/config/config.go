@@ -11,6 +11,7 @@ type Config struct {
 	RedisAddr  string
 	RedisPass  string
 	RedisDB    int
+	K8sAdapterMode string
 }
 
 func Load() Config {
@@ -19,6 +20,7 @@ func Load() Config {
 	redisAddr := getenv("KM_REDIS_ADDR", "localhost:6379")
 	redisPass := getenv("KM_REDIS_PASS", "")
 	redisDB := getenvInt("KM_REDIS_DB", 0)
+	k8sAdapterMode := getenv("KM_K8S_ADAPTER_MODE", "mock")
 
 	return Config{
 		ListenAddr: listenAddr,
@@ -26,6 +28,7 @@ func Load() Config {
 		RedisAddr:  redisAddr,
 		RedisPass:  redisPass,
 		RedisDB:    redisDB,
+		K8sAdapterMode: k8sAdapterMode,
 	}
 }
 
