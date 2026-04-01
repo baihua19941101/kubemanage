@@ -62,6 +62,7 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - `KM_REDIS_DB`
 - `KM_K8S_ADAPTER_MODE`（建议仅使用 `live` / `auto`，当前研发目标为 real-only）
 - `KM_SECRET_KEY`（连接敏感字段加密密钥，留空则保持明文兼容模式）
+- `KM_TERMINAL_SESSION_TTL_SECONDS`（终端会话 TTL 秒数，默认 `120`）
 写操作确认头：`X-Action-Confirm: CONFIRM`（关键写操作必填）
 失败排查头：`X-Request-Id`（后端响应会回传）
 

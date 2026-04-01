@@ -1,6 +1,8 @@
 package server
 
 import (
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,7 +42,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 	namespaceSvc := service.NewNamespaceService()
 	workloadSvc := service.NewWorkloadService()
 	liveWorkloadSvc := service.NewLiveWorkloadReader(clusterConnectionRepo)
-	terminalSessions := service.NewTerminalSessionStore(2 * time.Minute)
+	terminalSessions := service.NewTerminalSessionStore(parseTerminalSessionTTL())
 	liveResourceSvc := service.NewLiveResourceReader(clusterConnectionRepo)
 	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc, clusterConnectionSvc, adapterMode)
 	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, terminalSessions, adapterMode)
@@ -150,4 +152,17 @@ func normalizeK8sAdapterMode(mode string) string {
 	default:
 		return "live"
 	}
+}
+
+func parseTerminalSessionTTL() time.Duration {
+	const defaultTTL = 120
+	value := strings.TrimSpace(os.Getenv("KM_TERMINAL_SESSION_TTL_SECONDS"))
+	if value == "" {
+		return time.Duration(defaultTTL) * time.Second
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil || seconds <= 0 {
+		return time.Duration(defaultTTL) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
 }
