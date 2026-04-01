@@ -231,6 +231,12 @@ bash scripts/mvp_smoke_test.sh
 BASE_URL=http://127.0.0.1:8080 bash scripts/mvp_smoke_test.sh
 ```
 
+重构阶段统一验收脚本（R5）：
+
+```bash
+bash scripts/rebuild_qa.sh
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -417,6 +423,6 @@ BASE_URL=http://127.0.0.1:8080 bash scripts/mvp_smoke_test.sh
 ## 任务状态
 
 - 当前阶段：`第二阶段（Rancher 风格重构进行中）`
-- 当前任务：`R4：视觉与交互细节对齐`
+- 当前任务：`R5：重构后联调与验收`
 - 当前状态：`待验收`
-- 下一任务：`R5：重构后联调与验收`
+- 下一任务：`P202：工作负载扩展`
