@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"kubeManage/backend/internal/service"
 
@@ -109,13 +110,39 @@ func (h *WorkloadHandler) UpdatePodYAML(c *gin.Context) {
 
 func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
 	name := c.Param("name")
-	logs, err := h.workloadSvc.GetPodLogs(name)
+	logs, err := h.workloadSvc.GetPodLogs(name, service.PodLogQuery{
+		Keyword:       c.Query("keyword"),
+		CaseSensitive: parseBool(c.Query("caseSensitive")),
+		MatchOnly:     parseBool(c.Query("matchOnly")),
+	})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.String(http.StatusOK, logs)
+}
+
+func (h *WorkloadHandler) GetTerminalCapabilities(c *gin.Context) {
+	name := c.Param("name")
+	caps, err := h.workloadSvc.GetTerminalCapabilities(name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, caps)
+}
+
+func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
+	name := c.Param("name")
+	if err := h.workloadSvc.CreateTerminalSession(name); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error":   "terminal gateway not enabled",
+		"enabled": false,
+	})
 }
 
 func (h *WorkloadHandler) ListStatefulSets(c *gin.Context) {
@@ -259,6 +286,11 @@ func (h *WorkloadHandler) GetCronJob(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, item)
+}
+
+func parseBool(value string) bool {
+	ok, err := strconv.ParseBool(value)
+	return err == nil && ok
 }
 
 func (h *WorkloadHandler) GetCronJobYAML(c *gin.Context) {

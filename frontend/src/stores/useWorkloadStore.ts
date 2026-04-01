@@ -58,6 +58,18 @@ type CronJob = {
   age: string;
 };
 
+type PodLogOptions = {
+  keyword?: string;
+  caseSensitive?: boolean;
+  matchOnly?: boolean;
+};
+
+type TerminalCapabilities = {
+  enabled: boolean;
+  protocols: string[];
+  message: string;
+};
+
 type WorkloadState = {
   deployments: Deployment[];
   pods: Pod[];
@@ -72,7 +84,9 @@ type WorkloadState = {
   saveDeploymentYAML: (name: string, yaml: string) => Promise<boolean>;
   getPodYAML: (name: string) => Promise<string>;
   savePodYAML: (name: string, yaml: string) => Promise<boolean>;
-  getPodLogs: (name: string) => Promise<string>;
+  getPodLogs: (name: string, options?: PodLogOptions) => Promise<string>;
+  getTerminalCapabilities: (name: string) => Promise<TerminalCapabilities>;
+  createTerminalSession: (name: string) => Promise<{ error: string; enabled: boolean }>;
   getStatefulSetYAML: (name: string) => Promise<string>;
   saveStatefulSetYAML: (name: string, yaml: string) => Promise<boolean>;
   getDaemonSetYAML: (name: string) => Promise<string>;
@@ -156,12 +170,30 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     });
     return resp.ok;
   },
-  getPodLogs: async (name: string) => {
-    const resp = await apiFetch(`/api/v1/pods/${name}/logs`);
+  getPodLogs: async (name: string, options?: PodLogOptions) => {
+    const params = new URLSearchParams();
+    if (options?.keyword) params.set("keyword", options.keyword);
+    if (options?.caseSensitive) params.set("caseSensitive", "true");
+    if (options?.matchOnly) params.set("matchOnly", "true");
+    const query = params.toString();
+    const resp = await apiFetch(`/api/v1/pods/${name}/logs${query ? `?${query}` : ""}`);
     if (!resp.ok) {
       throw new Error("获取 Pod 日志失败");
     }
     return resp.text();
+  },
+  getTerminalCapabilities: async (name: string) => {
+    const resp = await apiFetch(`/api/v1/pods/${name}/terminal/capabilities`);
+    if (!resp.ok) {
+      throw new Error("获取终端能力失败");
+    }
+    return resp.json() as Promise<TerminalCapabilities>;
+  },
+  createTerminalSession: async (name: string) => {
+    const resp = await apiFetch(`/api/v1/pods/${name}/terminal/sessions`, {
+      method: "POST"
+    });
+    return resp.json() as Promise<{ error: string; enabled: boolean }>;
   },
   getStatefulSetYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/statefulsets/${name}/yaml`);

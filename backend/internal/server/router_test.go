@@ -135,6 +135,27 @@ func TestWorkloads(t *testing.T) {
 		t.Fatalf("get pod logs failed: %d body=%s", podLogW.Code, podLogW.Body.String())
 	}
 
+	filteredPodLogReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods/web-api-7bf59f6f9c-abcde/logs?keyword=healthz&matchOnly=true", nil)
+	filteredPodLogW := httptest.NewRecorder()
+	r.ServeHTTP(filteredPodLogW, filteredPodLogReq)
+	if filteredPodLogW.Code != http.StatusOK {
+		t.Fatalf("get filtered pod logs failed: %d body=%s", filteredPodLogW.Code, filteredPodLogW.Body.String())
+	}
+
+	terminalCapsReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/capabilities", nil)
+	terminalCapsW := httptest.NewRecorder()
+	r.ServeHTTP(terminalCapsW, terminalCapsReq)
+	if terminalCapsW.Code != http.StatusOK {
+		t.Fatalf("get terminal capabilities failed: %d body=%s", terminalCapsW.Code, terminalCapsW.Body.String())
+	}
+
+	terminalSessionReq := requestWithRole(http.MethodPost, "/api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/sessions", "", "operator")
+	terminalSessionW := httptest.NewRecorder()
+	r.ServeHTTP(terminalSessionW, terminalSessionReq)
+	if terminalSessionW.Code != http.StatusNotImplemented {
+		t.Fatalf("create terminal session placeholder failed: %d body=%s", terminalSessionW.Code, terminalSessionW.Body.String())
+	}
+
 	statefulReq, _ := http.NewRequest(http.MethodGet, "/api/v1/statefulsets", nil)
 	statefulW := httptest.NewRecorder()
 	r.ServeHTTP(statefulW, statefulReq)
