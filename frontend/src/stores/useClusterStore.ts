@@ -88,7 +88,10 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
     set({ error: "" });
     const resp = await apiFetch("/api/v1/clusters/connections/import/kubeconfig", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
@@ -103,7 +106,10 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
     set({ error: "" });
     const resp = await apiFetch("/api/v1/clusters/connections/import/token", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
@@ -129,7 +135,10 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
   activateConnection: async (id: number) => {
     set({ error: "" });
     const resp = await apiFetch(`/api/v1/clusters/connections/${id}/activate`, {
-      method: "POST"
+      method: "POST",
+      headers: {
+        "X-Action-Confirm": "CONFIRM"
+      }
     });
     if (!resp.ok) {
       const body = await resp.json().catch(() => null) as { error?: string } | null;

@@ -59,6 +59,7 @@ type CronJob = {
 };
 
 type PodLogOptions = {
+  container?: string;
   keyword?: string;
   caseSensitive?: boolean;
   matchOnly?: boolean;
@@ -68,6 +69,7 @@ type PodLogOptions = {
 type TerminalCapabilities = {
   enabled: boolean;
   protocols: string[];
+  containers?: string[];
   message: string;
 };
 
@@ -87,7 +89,7 @@ type WorkloadState = {
   savePodYAML: (name: string, yaml: string) => Promise<boolean>;
   getPodLogs: (name: string, options?: PodLogOptions) => Promise<string>;
   getTerminalCapabilities: (name: string) => Promise<TerminalCapabilities>;
-  createTerminalSession: (name: string) => Promise<{ error: string; enabled: boolean }>;
+  createTerminalSession: (name: string, container?: string) => Promise<{ error: string; enabled: boolean }>;
   getStatefulSetYAML: (name: string) => Promise<string>;
   saveStatefulSetYAML: (name: string, yaml: string) => Promise<boolean>;
   getDaemonSetYAML: (name: string) => Promise<string>;
@@ -151,7 +153,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   saveDeploymentYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/deployments/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;
@@ -166,7 +171,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   savePodYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/pods/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;
@@ -174,6 +182,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getPodLogs: async (name: string, options?: PodLogOptions) => {
     const params = new URLSearchParams();
     if (options?.keyword) params.set("keyword", options.keyword);
+    if (options?.container) params.set("container", options.container);
     if (options?.caseSensitive) params.set("caseSensitive", "true");
     if (options?.matchOnly) params.set("matchOnly", "true");
     if (options?.follow) params.set("follow", "true");
@@ -191,9 +200,16 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     }
     return resp.json() as Promise<TerminalCapabilities>;
   },
-  createTerminalSession: async (name: string) => {
+  createTerminalSession: async (name: string, container?: string) => {
     const resp = await apiFetch(`/api/v1/pods/${name}/terminal/sessions`, {
-      method: "POST"
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
+      body: JSON.stringify({
+        container: container || ""
+      })
     });
     return resp.json() as Promise<{ error: string; enabled: boolean }>;
   },
@@ -207,7 +223,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   saveStatefulSetYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/statefulsets/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;
@@ -222,7 +241,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   saveDaemonSetYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/daemonsets/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;
@@ -237,7 +259,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   saveJobYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/jobs/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;
@@ -252,7 +277,10 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   saveCronJobYAML: async (name: string, yaml: string) => {
     const resp = await apiFetch(`/api/v1/cronjobs/${name}/yaml`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
       body: JSON.stringify({ yaml })
     });
     return resp.ok;

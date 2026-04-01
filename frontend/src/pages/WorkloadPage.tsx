@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  MenuItem,
   Stack,
   TextField,
   Typography
@@ -120,6 +121,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [logsOpen, setLogsOpen] = useState(false);
   const [rawLogsText, setRawLogsText] = useState("");
   const [logKeyword, setLogKeyword] = useState("");
+  const [logContainer, setLogContainer] = useState("");
+  const [logContainers, setLogContainers] = useState<string[]>([]);
   const [logCaseSensitive, setLogCaseSensitive] = useState(false);
   const [logMatchOnly, setLogMatchOnly] = useState(false);
   const [logFollow, setLogFollow] = useState(false);
@@ -293,6 +296,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     setTerminalNotice("");
     setLogsNotice("");
     setLogKeyword("");
+    setLogContainer("");
+    setLogContainers([]);
     setLogCaseSensitive(false);
     setLogMatchOnly(false);
     setLogFollow(false);
@@ -303,6 +308,10 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     try {
       const capabilities = await getTerminalCapabilities(selectedName);
       setTerminalNotice(capabilities.message);
+      setLogContainers(capabilities.containers || []);
+      if ((capabilities.containers || []).length > 0) {
+        setLogContainer(capabilities.containers![0]);
+      }
     } catch (err) {
       setTerminalNotice(err instanceof Error ? err.message : "获取终端能力失败");
     } finally {
@@ -316,6 +325,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     setLogsError("");
     try {
       const logs = await getPodLogs(selectedName, {
+        container: logContainer || undefined,
         keyword: logKeyword,
         caseSensitive: logCaseSensitive,
         matchOnly: logMatchOnly,
@@ -332,7 +342,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   async function openTerminalPlaceholder() {
     if (!selectedName) return;
     try {
-      const result = await createTerminalSession(selectedName);
+      const result = await createTerminalSession(selectedName, logContainer || undefined);
       setTerminalNotice(result.error || "terminal gateway not enabled");
     } catch (err) {
       setTerminalNotice(err instanceof Error ? err.message : "终端能力暂不可用");
@@ -373,7 +383,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   useEffect(() => {
     if (!logsOpen || !selectedName) return;
     void refreshLogs();
-  }, [logsOpen, selectedName, logKeyword, logCaseSensitive, logMatchOnly]);
+  }, [logsOpen, selectedName, logContainer, logKeyword, logCaseSensitive, logMatchOnly]);
 
   useEffect(() => {
     if (!logsOpen || !selectedName || !logFollow) return;
@@ -381,7 +391,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
       void refreshLogs();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [logsOpen, selectedName, logFollow, logKeyword, logCaseSensitive, logMatchOnly]);
+  }, [logsOpen, selectedName, logFollow, logContainer, logKeyword, logCaseSensitive, logMatchOnly]);
 
   return (
     <>
@@ -562,6 +572,22 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             {logsNotice && <Alert severity="success">{logsNotice}</Alert>}
             {terminalNotice && <Alert severity="info">终端预留状态：{terminalNotice}</Alert>}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+              {logContainers.length > 0 && (
+                <TextField
+                  select
+                  size="small"
+                  label="容器"
+                  value={logContainer}
+                  onChange={(e) => setLogContainer(e.target.value)}
+                  sx={{ minWidth: 180 }}
+                >
+                  {logContainers.map((name) => (
+                    <MenuItem key={name} value={name}>
+                      {name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
               <TextField
                 size="small"
                 label="日志关键字"

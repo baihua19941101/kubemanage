@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -212,6 +213,80 @@ func (r *LiveWorkloadReader) GetPod(ctx context.Context, name string) (Pod, erro
 	return Pod{}, fmt.Errorf("pod not found: %s", name)
 }
 
+func (r *LiveWorkloadReader) GetPodLogs(ctx context.Context, name string, query PodLogQuery) (string, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+
+	ref, err := r.resolvePodRef(timeoutCtx, clientset, name)
+	if err != nil {
+		return "", err
+	}
+
+	container := strings.TrimSpace(query.Container)
+	if container == "" && len(ref.containers) > 0 {
+		container = ref.containers[0]
+	}
+	if container != "" && !containsString(ref.containers, container) {
+		return "", fmt.Errorf("container not found: %s", container)
+	}
+
+	tail := int64(500)
+	req := clientset.CoreV1().Pods(ref.namespace).GetLogs(ref.name, &corev1.PodLogOptions{
+		Container: container,
+		Follow:    false,
+		TailLines: &tail,
+	})
+	raw, err := req.DoRaw(timeoutCtx)
+	if err != nil {
+		return "", fmt.Errorf("get pod logs failed: %w", err)
+	}
+	return applyPodLogFilter(string(raw), query), nil
+}
+
+func (r *LiveWorkloadReader) GetTerminalCapabilities(ctx context.Context, name string) (TerminalCapabilities, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return TerminalCapabilities{}, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	ref, err := r.resolvePodRef(timeoutCtx, clientset, name)
+	if err != nil {
+		return TerminalCapabilities{}, err
+	}
+	return TerminalCapabilities{
+		Enabled:    true,
+		Protocols:  []string{"websocket"},
+		Containers: ref.containers,
+		Message:    "terminal bridge ready (exec endpoint pending)",
+	}, nil
+}
+
+func (r *LiveWorkloadReader) CreateTerminalSession(ctx context.Context, name, container string) error {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	ref, err := r.resolvePodRef(timeoutCtx, clientset, name)
+	if err != nil {
+		return err
+	}
+	target := strings.TrimSpace(container)
+	if target == "" && len(ref.containers) > 0 {
+		target = ref.containers[0]
+	}
+	if target != "" && !containsString(ref.containers, target) {
+		return fmt.Errorf("container not found: %s", target)
+	}
+	return nil
+}
+
 func (r *LiveWorkloadReader) buildClientset(ctx context.Context) (*kubernetes.Clientset, error) {
 	if r.repo == nil {
 		return nil, ErrNoActiveClusterConnection
@@ -229,6 +304,44 @@ func (r *LiveWorkloadReader) buildClientset(ctx context.Context) (*kubernetes.Cl
 		return nil, fmt.Errorf("build kubernetes client failed: %w", err)
 	}
 	return clientset, nil
+}
+
+type podRef struct {
+	namespace  string
+	name       string
+	containers []string
+}
+
+func (r *LiveWorkloadReader) resolvePodRef(ctx context.Context, clientset *kubernetes.Clientset, name string) (podRef, error) {
+	list, err := clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "metadata.name=" + name,
+		Limit:         20,
+	})
+	if err != nil {
+		return podRef{}, fmt.Errorf("find pod failed: %w", err)
+	}
+	if len(list.Items) == 0 {
+		return podRef{}, fmt.Errorf("pod not found: %s", name)
+	}
+	item := list.Items[0]
+	containers := make([]string, 0, len(item.Spec.Containers))
+	for _, c := range item.Spec.Containers {
+		containers = append(containers, c.Name)
+	}
+	return podRef{
+		namespace:  item.Namespace,
+		name:       item.Name,
+		containers: containers,
+	}, nil
+}
+
+func containsString(items []string, value string) bool {
+	for _, item := range items {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }
 
 func toDeployment(item appsv1.Deployment) Deployment {
