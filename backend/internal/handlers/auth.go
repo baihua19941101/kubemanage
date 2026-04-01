@@ -29,8 +29,9 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 	slices.Sort(permStrings)
 
 	c.JSON(http.StatusOK, gin.H{
-		"user":        c.GetString(middleware.CtxUserKey),
-		"role":        role,
-		"permissions": strings.Join(permStrings, ","),
+		"user":              c.GetString(middleware.CtxUserKey),
+		"role":              role,
+		"permissions":       strings.Join(permStrings, ","),
+		"allowedNamespaces": h.authSvc.AllowedNamespaces(role),
 	})
 }

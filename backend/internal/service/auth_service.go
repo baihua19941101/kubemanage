@@ -15,7 +15,8 @@ const (
 )
 
 type AuthService struct {
-	rolePerms map[string]map[Permission]bool
+	rolePerms      map[string]map[Permission]bool
+	roleNamespaces map[string][]string
 }
 
 func NewAuthService() *AuthService {
@@ -31,6 +32,11 @@ func NewAuthService() *AuthService {
 				PermWorkloadWrite:  true,
 				PermAuditRead:      true,
 			},
+		},
+		roleNamespaces: map[string][]string{
+			RoleViewer:   nil,
+			RoleOperator: {"dev"},
+			RoleAdmin:    {"*"},
 		},
 	}
 }
@@ -56,4 +62,26 @@ func (s *AuthService) Permissions(role string) []Permission {
 		perms = append(perms, p)
 	}
 	return perms
+}
+
+func (s *AuthService) AllowedNamespaces(role string) []string {
+	normalized := s.NormalizeRole(role)
+	namespaces := s.roleNamespaces[normalized]
+	out := make([]string, len(namespaces))
+	copy(out, namespaces)
+	return out
+}
+
+func (s *AuthService) CanAccessNamespace(role, namespace string) bool {
+	normalized := s.NormalizeRole(role)
+	allowed := s.roleNamespaces[normalized]
+	if len(allowed) == 0 {
+		return false
+	}
+	for _, item := range allowed {
+		if item == "*" || item == namespace {
+			return true
+		}
+	}
+	return false
 }

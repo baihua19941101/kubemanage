@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,6 +18,15 @@ type AuditRecord struct {
 type AuditService struct {
 	mu      sync.RWMutex
 	records []AuditRecord
+}
+
+type AuditFilter struct {
+	User       string
+	Role       string
+	Method     string
+	Path       string
+	StatusCode int
+	Limit      int
 }
 
 func NewAuditService() *AuditService {
@@ -39,10 +49,31 @@ func (s *AuditService) Append(user, role, method, path string, statusCode int) {
 	})
 }
 
-func (s *AuditService) List() []AuditRecord {
+func (s *AuditService) List(filter AuditFilter) []AuditRecord {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make([]AuditRecord, len(s.records))
-	copy(out, s.records)
+
+	out := make([]AuditRecord, 0, len(s.records))
+	for _, item := range s.records {
+		if filter.User != "" && item.User != filter.User {
+			continue
+		}
+		if filter.Role != "" && item.Role != filter.Role {
+			continue
+		}
+		if filter.Method != "" && item.Method != filter.Method {
+			continue
+		}
+		if filter.Path != "" && !strings.Contains(item.Path, filter.Path) {
+			continue
+		}
+		if filter.StatusCode > 0 && item.StatusCode != filter.StatusCode {
+			continue
+		}
+		out = append(out, item)
+	}
+	if filter.Limit > 0 && len(out) > filter.Limit {
+		out = out[len(out)-filter.Limit:]
+	}
 	return out
 }

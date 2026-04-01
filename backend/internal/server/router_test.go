@@ -95,6 +95,20 @@ func TestNamespaces(t *testing.T) {
 	if delW.Code != http.StatusNoContent {
 		t.Fatalf("delete namespace failed: %d body=%s", delW.Code, delW.Body.String())
 	}
+
+	operatorCreateDevReq := requestWithRole(http.MethodPost, "/api/v1/namespaces", `{"name":"dev"}`, "operator")
+	operatorCreateDevW := httptest.NewRecorder()
+	r.ServeHTTP(operatorCreateDevW, operatorCreateDevReq)
+	if operatorCreateDevW.Code != http.StatusConflict {
+		t.Fatalf("operator create dev should reach handler and hit conflict, got: %d body=%s", operatorCreateDevW.Code, operatorCreateDevW.Body.String())
+	}
+
+	operatorCreateDefaultReq := requestWithRole(http.MethodPost, "/api/v1/namespaces", `{"name":"default"}`, "operator")
+	operatorCreateDefaultW := httptest.NewRecorder()
+	r.ServeHTTP(operatorCreateDefaultW, operatorCreateDefaultReq)
+	if operatorCreateDefaultW.Code != http.StatusForbidden {
+		t.Fatalf("operator create default should be forbidden, got: %d body=%s", operatorCreateDefaultW.Code, operatorCreateDefaultW.Body.String())
+	}
 }
 
 func TestWorkloads(t *testing.T) {
@@ -117,8 +131,29 @@ func TestWorkloads(t *testing.T) {
 	updateDeployReq := requestWithRole(http.MethodPut, "/api/v1/deployments/web-api/yaml", `{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}`, "operator")
 	updateDeployW := httptest.NewRecorder()
 	r.ServeHTTP(updateDeployW, updateDeployReq)
-	if updateDeployW.Code != http.StatusNoContent {
-		t.Fatalf("update deployment yaml failed: %d body=%s", updateDeployW.Code, updateDeployW.Body.String())
+	if updateDeployW.Code != http.StatusForbidden {
+		t.Fatalf("operator update deployment in default should be forbidden: %d body=%s", updateDeployW.Code, updateDeployW.Body.String())
+	}
+
+	updateDeployAdminReq := requestWithRole(http.MethodPut, "/api/v1/deployments/web-api/yaml", `{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}`, "admin")
+	updateDeployAdminW := httptest.NewRecorder()
+	r.ServeHTTP(updateDeployAdminW, updateDeployAdminReq)
+	if updateDeployAdminW.Code != http.StatusNoContent {
+		t.Fatalf("admin update deployment yaml failed: %d body=%s", updateDeployAdminW.Code, updateDeployAdminW.Body.String())
+	}
+
+	updateJobReq := requestWithRole(http.MethodPut, "/api/v1/jobs/db-migrate-20260401/yaml", `{"yaml":"apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: db-migrate-20260401\n"}`, "operator")
+	updateJobW := httptest.NewRecorder()
+	r.ServeHTTP(updateJobW, updateJobReq)
+	if updateJobW.Code != http.StatusForbidden {
+		t.Fatalf("operator update default job should be forbidden: %d body=%s", updateJobW.Code, updateJobW.Body.String())
+	}
+
+	updatePodDevReq := requestWithRole(http.MethodPut, "/api/v1/pods/task-worker-856ddcf69f-uvwxy/yaml", `{"yaml":"apiVersion: v1\nkind: Pod\nmetadata:\n  name: task-worker-856ddcf69f-uvwxy\n"}`, "operator")
+	updatePodDevW := httptest.NewRecorder()
+	r.ServeHTTP(updatePodDevW, updatePodDevReq)
+	if updatePodDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator update pod in dev should pass: %d body=%s", updatePodDevW.Code, updatePodDevW.Body.String())
 	}
 
 	podListReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods", nil)
@@ -162,8 +197,15 @@ func TestWorkloads(t *testing.T) {
 	terminalSessionReq := requestWithRole(http.MethodPost, "/api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/sessions", "", "operator")
 	terminalSessionW := httptest.NewRecorder()
 	r.ServeHTTP(terminalSessionW, terminalSessionReq)
-	if terminalSessionW.Code != http.StatusNotImplemented {
-		t.Fatalf("create terminal session placeholder failed: %d body=%s", terminalSessionW.Code, terminalSessionW.Body.String())
+	if terminalSessionW.Code != http.StatusForbidden {
+		t.Fatalf("operator terminal session in default should be forbidden: %d body=%s", terminalSessionW.Code, terminalSessionW.Body.String())
+	}
+
+	terminalSessionAdminReq := requestWithRole(http.MethodPost, "/api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/sessions", "", "admin")
+	terminalSessionAdminW := httptest.NewRecorder()
+	r.ServeHTTP(terminalSessionAdminW, terminalSessionAdminReq)
+	if terminalSessionAdminW.Code != http.StatusNotImplemented {
+		t.Fatalf("admin terminal session placeholder failed: %d body=%s", terminalSessionAdminW.Code, terminalSessionAdminW.Body.String())
 	}
 
 	statefulReq, _ := http.NewRequest(http.MethodGet, "/api/v1/statefulsets", nil)
@@ -291,5 +333,12 @@ func TestRBACAndAudit(t *testing.T) {
 	r.ServeHTTP(auditW, auditReq)
 	if auditW.Code != http.StatusOK {
 		t.Fatalf("admin audit read failed: %d body=%s", auditW.Code, auditW.Body.String())
+	}
+
+	filterReq := requestWithRole(http.MethodGet, "/api/v1/audits?method=DELETE&path=/api/v1/namespaces&statusCode=403&limit=1", "", "admin")
+	filterW := httptest.NewRecorder()
+	r.ServeHTTP(filterW, filterReq)
+	if filterW.Code != http.StatusOK {
+		t.Fatalf("filtered audit read failed: %d body=%s", filterW.Code, filterW.Body.String())
 	}
 }
