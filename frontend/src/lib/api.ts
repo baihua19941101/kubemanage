@@ -1,4 +1,7 @@
 const ROLE_KEY = "km_user_role";
+const USER_KEY = "km_user_name";
+const ACCESS_TOKEN_KEY = "km_access_token";
+const REFRESH_TOKEN_KEY = "km_refresh_token";
 
 export function getCurrentRole(): string {
   return localStorage.getItem(ROLE_KEY) || "admin";
@@ -6,6 +9,32 @@ export function getCurrentRole(): string {
 
 export function setCurrentRole(role: string) {
   localStorage.setItem(ROLE_KEY, role);
+}
+
+export function getCurrentUser(): string {
+  return localStorage.getItem(USER_KEY) || "demo-user";
+}
+
+export function setCurrentUser(user: string) {
+  localStorage.setItem(USER_KEY, user);
+}
+
+export function getAccessToken(): string {
+  return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
+}
+
+export function getRefreshToken(): string {
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || "";
+}
+
+export function setAuthTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+export function clearAuthTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export class ApiRequestError extends Error {
@@ -26,8 +55,13 @@ export class ApiRequestError extends Error {
 
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   const headers = new Headers(init?.headers || {});
-  headers.set("X-User-Role", getCurrentRole());
-  headers.set("X-User", "demo-user");
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  } else {
+    headers.set("X-User-Role", getCurrentRole());
+    headers.set("X-User", getCurrentUser());
+  }
   return fetch(input, {
     ...init,
     headers

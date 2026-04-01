@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"kubeManage/backend/internal/service"
 
@@ -12,12 +13,27 @@ import (
 )
 
 const (
-	CtxRoleKey = "km_role"
-	CtxUserKey = "km_user"
+	CtxRoleKey              = "km_role"
+	CtxUserKey              = "km_user"
+	CtxAllowedNamespacesKey = "km_allowed_namespaces"
 )
 
 func InjectRole(authSvc *service.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
+		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+			token := strings.TrimSpace(authHeader[len("Bearer "):])
+			if token != "" {
+				if identity, err := authSvc.ParseAccessToken(token); err == nil && identity != nil {
+					c.Set(CtxUserKey, identity.User)
+					c.Set(CtxRoleKey, authSvc.NormalizeRole(identity.Role))
+					c.Set(CtxAllowedNamespacesKey, identity.AllowedNamespaces)
+					c.Next()
+					return
+				}
+			}
+		}
+
 		user := c.GetHeader("X-User")
 		if user == "" {
 			user = "demo-user"
@@ -25,6 +41,7 @@ func InjectRole(authSvc *service.AuthService) gin.HandlerFunc {
 		role := authSvc.NormalizeRole(c.GetHeader("X-User-Role"))
 		c.Set(CtxUserKey, user)
 		c.Set(CtxRoleKey, role)
+		c.Set(CtxAllowedNamespacesKey, authSvc.AllowedNamespaces(role))
 		c.Next()
 	}
 }
@@ -57,7 +74,11 @@ func RequireScopedPermission(
 			abortWithError(c, 404, "namespace_resolve_failed", err.Error(), "")
 			return
 		}
-		if !authSvc.CanAccessNamespace(role, namespace) {
+		allowedNamespaces := c.GetStringSlice(CtxAllowedNamespacesKey)
+		if len(allowedNamespaces) == 0 {
+			allowedNamespaces = authSvc.AllowedNamespaces(role)
+		}
+		if !service.CanAccessNamespace(role, namespace, allowedNamespaces) {
 			abortWithError(c, 403, "namespace_access_denied", "namespace access denied", "role="+role+", namespace="+namespace)
 			return
 		}

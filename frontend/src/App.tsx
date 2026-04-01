@@ -1,16 +1,32 @@
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import ShellLayout from "./layout/ShellLayout";
 import AuthAuditPage from "./pages/AuthAuditPage";
 import ClusterPage from "./pages/ClusterPage";
+import LoginPage from "./pages/LoginPage";
 import NamespacePage from "./pages/NamespacePage";
 import ServiceDiscoveryPage from "./pages/ServiceDiscoveryPage";
 import StoragePage from "./pages/StoragePage";
 import WorkloadPage from "./pages/WorkloadPage";
+import { useAuthStore } from "./stores/useAuthStore";
 
 export default function App() {
+  const bootstrap = useAuthStore((s) => s.bootstrap);
+  const authenticated = useAuthStore((s) => s.authenticated);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    void bootstrap().finally(() => setReady(true));
+  }, [bootstrap]);
+
+  if (!ready) {
+    return null;
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<ShellLayout />}>
+      <Route path="/login" element={authenticated ? <Navigate to="/cluster" replace /> : <LoginPage />} />
+      <Route path="/" element={authenticated ? <ShellLayout /> : <Navigate to="/login" replace />}>
         <Route index element={<Navigate to="/cluster" replace />} />
         <Route path="cluster" element={<ClusterPage />} />
         <Route path="namespaces" element={<NamespacePage />} />
@@ -34,7 +50,7 @@ export default function App() {
         <Route path="resources" element={<Navigate to="/service-discovery/services" replace />} />
         <Route path="auth-audit" element={<AuthAuditPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/cluster" replace />} />
+      <Route path="*" element={<Navigate to={authenticated ? "/cluster" : "/login"} replace />} />
     </Routes>
   );
 }

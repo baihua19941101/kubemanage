@@ -63,6 +63,10 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - `KM_K8S_ADAPTER_MODE`（建议仅使用 `live` / `auto`，当前研发目标为 real-only）
 - `KM_SECRET_KEY`（连接敏感字段加密密钥，留空则保持明文兼容模式）
 - `KM_TERMINAL_SESSION_TTL_SECONDS`（终端会话 TTL 秒数，默认 `120`）
+- `KM_AUTH_JWT_SECRET`（认证 JWT 密钥）
+- `KM_AUTH_ACCESS_TTL_SECONDS`（Access Token 有效期秒数，默认 `3600`）
+- `KM_AUTH_REFRESH_TTL_SECONDS`（Refresh Token 有效期秒数，默认 `604800`）
+- `KM_AUTH_COMPAT_STAGE_KEEP`（旧头兼容阶段数，当前默认 `1`）
 写操作确认头：`X-Action-Confirm: CONFIRM`（关键写操作必填）
 失败排查头：`X-Request-Id`（后端响应会回传）
 
@@ -251,6 +255,24 @@ curl http://localhost:8080/api/v1/secrets
 
 ```bash
 curl -H "X-User-Role: admin" http://localhost:8080/api/v1/auth/me
+```
+
+默认管理员登录（首次启动自动初始化 `admin/123456`）：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"123456"}'
+```
+
+管理员创建用户（需携带管理员登录获取的 Access Token）：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/users \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"readonly1","password":"123456","role":"readonly","allowedNamespaces":["dev"]}'
 ```
 
 以 viewer 角色尝试删除名称空间（应返回 403）：
@@ -483,6 +505,15 @@ bash scripts/rebuild_qa.sh
 5. 真实日志与终端能力（多容器、流式日志、exec/terminal）
 6. 第三阶段联调与验收
 
+### 第五阶段任务清单（账号认证与用户体系）
+
+1. 账号认证基础（管理员创建账号、账号密码登录、刷新、登出）
+2. 用户模型与默认管理员初始化（默认 `admin/123456`，首次启动自动创建）
+3. 角色与作用域策略落地（参考 Rancher 分层：`admin`/`standard-user`/`readonly`）
+4. 中间件升级（优先 Bearer Token，兼容 `X-User/X-User-Role` 过渡 1 个阶段）
+5. 管理员用户管理接口（创建用户、角色分配、授权命名空间）
+6. 联调与验收（后端测试、前端构建、认证冒烟脚本）
+
 ### P301 计划（2026-04-01）
 
 #### 范围定义
@@ -699,6 +730,38 @@ bash scripts/rebuild_qa.sh
 - 失败分支：重复消费=`401 invalid`，TTL 过期=`401 expired`，跨用户复用=`403 owner mismatch`
 - 结论：`P402-C` 真实集群 e2e 验收通过
 
+### P501 计划（2026-04-01）
+
+#### 范围定义
+- 仅管理员可创建账号（关闭开放注册）
+- 首版仅支持账号密码登录（OAuth/LDAP 后续阶段开发）
+- `readonly` 仅允许已授权范围访问
+- 兼容 `X-User/X-User-Role` 仅保留 1 个阶段，后续切换到 Bearer Token
+
+#### 角色策略（Rancher 风格映射）
+- 全局角色：
+  - `admin`：平台全权限，具备用户创建与授权管理能力
+  - `standard-user`：普通运维账号，按授权范围访问
+  - `readonly`：只读账号，仅可访问授权范围
+- 兼容映射（过渡期）：
+  - `operator` -> `standard-user`
+  - `viewer` -> `readonly`
+
+#### 开发拆分
+1. 用户与令牌数据模型（users/refresh_tokens）及默认管理员初始化
+2. 认证接口（登录、刷新、登出、管理员创建用户）
+3. 鉴权中间件升级（Bearer Token 优先 + 旧头兼容）
+4. 作用域权限落地（readonly 仅授权范围）
+5. 联调与验收（go test、npm build、auth 冒烟）
+
+#### P501 验收标准（执行版）
+- 默认管理员 `admin/123456` 可登录并获取访问令牌
+- 非管理员无法创建账号；管理员可创建 `standard-user`/`readonly`
+- `readonly` 对未授权命名空间写操作返回 `403`
+- 旧 `X-User/X-User-Role` 仍可在过渡期使用，Bearer Token 生效优先级更高
+- 后端 `go test ./...`、前端 `npm run build`、认证冒烟脚本通过
+- 提供 `scripts/p501_auth_smoke_test.sh` 认证冒烟脚本
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -709,7 +772,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第四阶段（P402 已完成）`
-- 当前任务：`P402：真实终端 exec 链路打通（已完成）`
-- 当前状态：`P401/P402 均已完成；已完成会话管理、WebSocket/exec 桥接、安全校验与真实集群 e2e 验收`
-- 下一任务：`第四阶段后续规划（待确认）`
+- 当前阶段：`第五阶段（P501 已完成）`
+- 当前任务：`P501：账号认证与用户体系（已完成）`
+- 当前状态：`已完成默认 admin 初始化、登录/刷新/登出、管理员创建用户、Bearer 优先鉴权、前端登录页与认证冒烟`
+- 下一任务：`第六阶段规划（OAuth/LDAP 与更细粒度授权）`
