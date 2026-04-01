@@ -122,9 +122,11 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [logKeyword, setLogKeyword] = useState("");
   const [logCaseSensitive, setLogCaseSensitive] = useState(false);
   const [logMatchOnly, setLogMatchOnly] = useState(false);
+  const [logFollow, setLogFollow] = useState(false);
   const [logsError, setLogsError] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [terminalNotice, setTerminalNotice] = useState("");
+  const [logsNotice, setLogsNotice] = useState("");
 
   useEffect(() => {
     void load();
@@ -169,23 +171,21 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const selectedJob = jobs.find((x) => x.name === selectedName) ?? null;
   const selectedCronJob = cronJobs.find((x) => x.name === selectedName) ?? null;
 
-  const filteredLogsText = useMemo(() => {
-    if (!logKeyword.trim()) {
-      return rawLogsText;
-    }
+  const visibleLogLines = useMemo(
+    () => rawLogsText.split("\n").filter((line) => line.length > 0),
+    [rawLogsText]
+  );
 
+  const matchedLogCount = useMemo(() => {
+    if (!logKeyword.trim()) {
+      return visibleLogLines.length;
+    }
     const needle = logCaseSensitive ? logKeyword : logKeyword.toLowerCase();
-    const lines = rawLogsText.split("\n").filter((line) => line.length > 0);
-    const matched = lines.filter((line) => {
+    return visibleLogLines.filter((line) => {
       const haystack = logCaseSensitive ? line : line.toLowerCase();
       return haystack.includes(needle);
-    });
-
-    if (logMatchOnly) {
-      return matched.join("\n");
-    }
-    return rawLogsText;
-  }, [logCaseSensitive, logKeyword, logMatchOnly, rawLogsText]);
+    }).length;
+  }, [logCaseSensitive, logKeyword, visibleLogLines]);
 
   const deploymentColumns = [
     { key: "name", header: "名称", render: (r: DeploymentRow) => r.name },
@@ -290,20 +290,38 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
   async function openLogs() {
     if (!selectedName) return;
-    setLogsLoading(true);
-    setLogsError("");
     setTerminalNotice("");
+    setLogsNotice("");
     setLogKeyword("");
     setLogCaseSensitive(false);
     setLogMatchOnly(false);
+    setLogFollow(false);
+    setRawLogsText("");
+    setLogsError("");
+    setLogsOpen(true);
+    setLogsLoading(true);
     try {
-      const [logs, capabilities] = await Promise.all([
-        getPodLogs(selectedName),
-        getTerminalCapabilities(selectedName)
-      ]);
-      setRawLogsText(logs);
+      const capabilities = await getTerminalCapabilities(selectedName);
       setTerminalNotice(capabilities.message);
-      setLogsOpen(true);
+    } catch (err) {
+      setTerminalNotice(err instanceof Error ? err.message : "获取终端能力失败");
+    } finally {
+      setLogsLoading(false);
+    }
+  }
+
+  async function refreshLogs() {
+    if (!selectedName) return;
+    setLogsLoading(true);
+    setLogsError("");
+    try {
+      const logs = await getPodLogs(selectedName, {
+        keyword: logKeyword,
+        caseSensitive: logCaseSensitive,
+        matchOnly: logMatchOnly,
+        follow: logFollow
+      });
+      setRawLogsText(logs);
     } catch (err) {
       setLogsError(err instanceof Error ? err.message : "获取 Pod 日志失败");
     } finally {
@@ -321,9 +339,26 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
+  async function copyLogs() {
+    if (!rawLogsText) return;
+    try {
+      await navigator.clipboard.writeText(rawLogsText);
+      setLogsNotice("日志已复制到剪贴板");
+    } catch {
+      setLogsNotice("复制失败，请检查浏览器剪贴板权限");
+    }
+  }
+
+  function clearLogFilters() {
+    setLogKeyword("");
+    setLogCaseSensitive(false);
+    setLogMatchOnly(false);
+    setLogsNotice("已清空日志筛选条件");
+  }
+
   function downloadLogs() {
     if (!selectedName) return;
-    const content = filteredLogsText;
+    const content = rawLogsText;
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -334,6 +369,19 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
+
+  useEffect(() => {
+    if (!logsOpen || !selectedName) return;
+    void refreshLogs();
+  }, [logsOpen, selectedName, logKeyword, logCaseSensitive, logMatchOnly]);
+
+  useEffect(() => {
+    if (!logsOpen || !selectedName || !logFollow) return;
+    const timer = window.setInterval(() => {
+      void refreshLogs();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [logsOpen, selectedName, logFollow, logKeyword, logCaseSensitive, logMatchOnly]);
 
   return (
     <>
@@ -511,6 +559,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {logsError && <Alert severity="error">{logsError}</Alert>}
+            {logsNotice && <Alert severity="success">{logsNotice}</Alert>}
             {terminalNotice && <Alert severity="info">终端预留状态：{terminalNotice}</Alert>}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               <TextField
@@ -528,12 +577,29 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
                 control={<Checkbox checked={logMatchOnly} onChange={(e) => setLogMatchOnly(e.target.checked)} />}
                 label="仅显示匹配行"
               />
+              <FormControlLabel
+                control={<Checkbox checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)} />}
+                label="跟随刷新"
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                当前显示 {visibleLogLines.length} 行
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                匹配 {matchedLogCount} 行
+              </Typography>
+              <Button size="small" onClick={clearLogFilters}>清空筛选</Button>
+              <Button size="small" onClick={() => void refreshLogs()} disabled={logsLoading}>
+                {logsLoading ? "刷新中..." : "立即刷新"}
+              </Button>
+              <Button size="small" onClick={() => void copyLogs()} disabled={!rawLogsText}>复制日志</Button>
             </Stack>
             <TextField
               multiline
               minRows={16}
               fullWidth
-              value={filteredLogsText}
+              value={rawLogsText}
               InputProps={{ readOnly: true }}
               placeholder={logsLoading ? "日志加载中..." : "暂无日志"}
             />
@@ -541,7 +607,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         </DialogContent>
         <DialogActions>
           <Button onClick={() => void openTerminalPlaceholder()}>打开终端</Button>
-          <Button onClick={downloadLogs} disabled={!filteredLogsText}>导出日志</Button>
+          <Button onClick={downloadLogs} disabled={!rawLogsText}>导出日志</Button>
           <Button onClick={() => setLogsOpen(false)}>关闭</Button>
         </DialogActions>
       </Dialog>

@@ -85,6 +85,14 @@ main() {
     exit 1
   fi
 
+  body="${TMP_DIR}/pod-follow-logs.txt"
+  code="$(request GET '/api/v1/pods/web-api-7bf59f6f9c-abcde/logs?follow=true' viewer "${body}")"
+  expect_status "${code}" "200" "get follow pod logs"
+  if ! grep -q 'follow refresh tick=' "${body}"; then
+    echo "[p205-smoke][FAIL] follow log output missing refresh marker"
+    exit 1
+  fi
+
   body="${TMP_DIR}/terminal-capabilities.json"
   code="$(request GET /api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/capabilities viewer "${body}")"
   expect_status "${code}" "200" "get terminal capabilities"

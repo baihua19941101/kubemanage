@@ -114,6 +114,7 @@ func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
 		Keyword:       c.Query("keyword"),
 		CaseSensitive: parseBool(c.Query("caseSensitive")),
 		MatchOnly:     parseBool(c.Query("matchOnly")),
+		Follow:        parseBool(c.Query("follow")),
 	})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

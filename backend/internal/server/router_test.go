@@ -142,6 +142,16 @@ func TestWorkloads(t *testing.T) {
 		t.Fatalf("get filtered pod logs failed: %d body=%s", filteredPodLogW.Code, filteredPodLogW.Body.String())
 	}
 
+	followPodLogReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods/web-api-7bf59f6f9c-abcde/logs?follow=true", nil)
+	followPodLogW := httptest.NewRecorder()
+	r.ServeHTTP(followPodLogW, followPodLogReq)
+	if followPodLogW.Code != http.StatusOK {
+		t.Fatalf("get follow pod logs failed: %d body=%s", followPodLogW.Code, followPodLogW.Body.String())
+	}
+	if !bytes.Contains(followPodLogW.Body.Bytes(), []byte("follow refresh tick=")) {
+		t.Fatalf("follow pod logs missing refresh marker: %s", followPodLogW.Body.String())
+	}
+
 	terminalCapsReq, _ := http.NewRequest(http.MethodGet, "/api/v1/pods/web-api-7bf59f6f9c-abcde/terminal/capabilities", nil)
 	terminalCapsW := httptest.NewRecorder()
 	r.ServeHTTP(terminalCapsW, terminalCapsReq)

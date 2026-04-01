@@ -85,12 +85,14 @@ type WorkloadService struct {
 	jobYAML        map[string]string
 	cronJobYAML    map[string]string
 	podLogs        map[string]string
+	podLogFollow   map[string]int
 }
 
 type PodLogQuery struct {
 	Keyword       string
 	CaseSensitive bool
 	MatchOnly     bool
+	Follow        bool
 }
 
 type TerminalCapabilities struct {
@@ -235,6 +237,7 @@ func NewWorkloadService() *WorkloadService {
 		jobYAML:        jobYAML,
 		cronJobYAML:    cronJobYAML,
 		podLogs:        podLogs,
+		podLogFollow:   map[string]int{},
 	}
 	s.refreshAges()
 	return s
@@ -393,6 +396,10 @@ func (s *WorkloadService) GetPodLogs(name string, query PodLogQuery) (string, er
 	logs, ok := s.podLogs[name]
 	if !ok {
 		return "", fmt.Errorf("pod not found: %s", name)
+	}
+	if query.Follow {
+		s.podLogFollow[name]++
+		logs = logs + fmt.Sprintf("[DEBUG] follow refresh tick=%d pod=%s\n", s.podLogFollow[name], name)
 	}
 	if strings.TrimSpace(query.Keyword) == "" {
 		return logs, nil
