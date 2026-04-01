@@ -343,7 +343,11 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     if (!selectedName) return;
     try {
       const result = await createTerminalSession(selectedName, logContainer || undefined);
-      setTerminalNotice(result.error || "terminal gateway not enabled");
+      if (result.wsPath) {
+        setTerminalNotice(`终端会话已创建，可使用 WebSocket 地址：${result.wsPath}`);
+      } else {
+        setTerminalNotice(result.error || "terminal gateway not enabled");
+      }
     } catch (err) {
       setTerminalNotice(err instanceof Error ? err.message : "终端能力暂不可用");
     }

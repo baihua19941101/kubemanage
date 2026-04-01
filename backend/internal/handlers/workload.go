@@ -11,9 +11,10 @@ import (
 )
 
 type WorkloadHandler struct {
-	workloadSvc     *service.WorkloadService
-	liveWorkloadSvc *service.LiveWorkloadReader
-	adapterMode     string
+	workloadSvc      *service.WorkloadService
+	liveWorkloadSvc  *service.LiveWorkloadReader
+	terminalSessions *service.TerminalSessionStore
+	adapterMode      string
 }
 
 type UpdateYAMLRequest struct {
@@ -24,11 +25,12 @@ type createTerminalSessionRequest struct {
 	Container string `json:"container"`
 }
 
-func NewWorkloadHandler(workloadSvc *service.WorkloadService, liveWorkloadSvc *service.LiveWorkloadReader, adapterMode string) *WorkloadHandler {
+func NewWorkloadHandler(workloadSvc *service.WorkloadService, liveWorkloadSvc *service.LiveWorkloadReader, terminalSessions *service.TerminalSessionStore, adapterMode string) *WorkloadHandler {
 	return &WorkloadHandler{
-		workloadSvc:     workloadSvc,
-		liveWorkloadSvc: liveWorkloadSvc,
-		adapterMode:     adapterMode,
+		workloadSvc:      workloadSvc,
+		liveWorkloadSvc:  liveWorkloadSvc,
+		terminalSessions: terminalSessions,
+		adapterMode:      adapterMode,
 	}
 }
 
@@ -256,10 +258,13 @@ func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error":     "terminal websocket bridge pending",
+		session := h.terminalSessions.Create(name, req.Container, c.GetString("km_user"), c.GetString("km_role"))
+		c.JSON(http.StatusCreated, gin.H{
 			"enabled":   true,
-			"container": req.Container,
+			"sessionId": session.ID,
+			"container": session.Container,
+			"wsPath":    "/api/v1/pods/" + name + "/terminal/ws?sessionId=" + session.ID,
+			"error":     "terminal session created",
 		})
 		return
 	}

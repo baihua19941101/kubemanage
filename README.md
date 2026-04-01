@@ -638,6 +638,65 @@ bash scripts/rebuild_qa.sh
 - 前端 `workloads` 页面可正常访问，`npm run build` 通过
 - 后端 `go test ./...` 通过，且新增接口纳入路由测试
 
+### P402 执行计划（2026-04-01）
+
+#### 范围定义
+- 目标范围：打通真实终端 `exec` 最小闭环，覆盖会话创建、WebSocket 通道、后端 stream 桥接
+- 能力范围：`sessionId` 一次性消费、TTL 失效、容器参数透传、基础异常回传（过期/无效/不可达）
+- 本轮不纳入：终端录屏、多人共享会话、历史回放、复杂命令模板
+
+#### 设计要点
+- 会话模型：`Create -> Consume -> Expire`，默认短 TTL，消费后立即失效
+- 通道模型：`/terminal/sessions` 负责鉴权和会话签发，`/terminal/ws` 负责输入输出转发
+- 执行模型：通过 `client-go remotecommand` 连接 `pods/exec`，将 WebSocket 文本流桥接到 stdin/stdout
+- 安全模型：保持现有写操作确认头与 RBAC 作用域校验，不放宽权限边界
+
+#### 开发拆分
+1. `P402-A`：终端会话管理（会话创建、TTL、sessionId 校验）
+2. `P402-B`：WebSocket exec 通道（输入输出桥接、异常回传、连接生命周期）
+3. `P402-C`：回归与验收（`go test`、`npm run build`、`p402` 冒烟脚本）
+
+#### P402 验收标准（执行版）
+- 创建终端会话返回 `sessionId` 与可连接的 `wsPath`
+- 同一 `sessionId` 仅允许消费一次，重复使用返回无效会话错误
+- 过期 `sessionId` 返回会话过期错误，且不会触发真实 `exec`
+- WebSocket 成功连通后可向容器发送输入并接收输出
+- 后端 `go test ./...` 通过，前端 `npm run build` 通过，补充 `scripts/p402_smoke_test.sh`
+
+#### P402-C 真实集群 e2e 验收执行说明
+1. 验收前置：
+`KM_K8S_ADAPTER_MODE=live`，且已有可用激活连接（`/api/v1/clusters/connections/:id/activate` 已成功）。
+2. 创建会话：
+`POST /api/v1/pods/:name/terminal/sessions`（带 `X-Action-Confirm: CONFIRM`）并记录返回 `sessionId/wsPath`。
+3. 建立连接：
+使用 `wsPath` 建立 WebSocket，建议附带命令参数 `?command=sh`。
+4. 输入输出校验：
+发送 `echo P402_E2E_OK`，期望回包中可见 `P402_E2E_OK`。
+5. 失败分支校验：
+同一 `sessionId` 二次连接应失败；超 TTL 后连接应返回过期错误；跨用户/角色复用应返回 owner mismatch。
+6. 结果沉淀：
+将本次验收结果写入 `TASKS.md` 完成记录，并更新 `T095` 状态。
+
+#### P402-C 验收记录模板
+
+```md
+- 日期：YYYY-MM-DD
+- 环境：cluster=<name>, namespace=<ns>, pod=<pod>, container=<container>
+- 会话创建：通过/失败（状态码、requestId）
+- WebSocket 连接：通过/失败（错误信息）
+- 收发验证：通过/失败（关键输出）
+- 失败分支：重复消费=通过/失败；TTL过期=通过/失败；owner绑定=通过/失败
+- 结论：通过/不通过
+- 备注：问题与后续动作
+```
+
+#### P402-C 本次验收结果（2026-04-01）
+- 环境：`KM_K8S_ADAPTER_MODE=live`，激活连接 `id=1(test1)`，验证 Pod `nginx-smoke-5c66c96d88-cbh7m`
+- 会话创建：通过（`201`，返回 `sessionId/wsPath`）
+- WebSocket 收发：通过（发送 `echo P402_E2E_OK`，回显包含 `P402_E2E_OK`）
+- 失败分支：重复消费=`401 invalid`，TTL 过期=`401 expired`，跨用户复用=`403 owner mismatch`
+- 结论：`P402-C` 真实集群 e2e 验收通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -648,7 +707,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第四阶段（P401 已完成）`
-- 当前任务：`P402：真实终端 exec 链路打通（待开始）`
-- 当前状态：`P401 已完成：前端统一错误解析并展示 requestId/code/hint，关键写操作报错可直接定位后端请求链路`
-- 下一任务：`P402：真实终端 exec 链路打通（规划中）`
+- 当前阶段：`第四阶段（P402 已完成）`
+- 当前任务：`P402：真实终端 exec 链路打通（已完成）`
+- 当前状态：`P401/P402 均已完成；已完成会话管理、WebSocket/exec 桥接、安全校验与真实集群 e2e 验收`
+- 下一任务：`第四阶段后续规划（待确认）`
