@@ -46,7 +46,10 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
     try {
       const resp = await apiFetch("/api/v1/namespaces", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Action-Confirm": "CONFIRM"
+        },
         body: JSON.stringify({ name: trimmed })
       });
       if (!resp.ok) {
@@ -63,7 +66,10 @@ export const useNamespaceStore = create<NamespaceState>((set, get) => ({
     try {
       set({ error: "" });
       const resp = await apiFetch(`/api/v1/namespaces/${name}`, {
-        method: "DELETE"
+        method: "DELETE",
+        headers: {
+          "X-Action-Confirm": "CONFIRM"
+        }
       });
       if (!resp.ok) {
         const text = await resp.text();

@@ -89,6 +89,7 @@ type WorkloadService struct {
 }
 
 type PodLogQuery struct {
+	Container     string
 	Keyword       string
 	CaseSensitive bool
 	MatchOnly     bool
@@ -96,9 +97,10 @@ type PodLogQuery struct {
 }
 
 type TerminalCapabilities struct {
-	Enabled   bool     `json:"enabled"`
-	Protocols []string `json:"protocols"`
-	Message   string   `json:"message"`
+	Enabled    bool     `json:"enabled"`
+	Protocols  []string `json:"protocols"`
+	Containers []string `json:"containers,omitempty"`
+	Message    string   `json:"message"`
 }
 
 func NewWorkloadService() *WorkloadService {
@@ -401,46 +403,19 @@ func (s *WorkloadService) GetPodLogs(name string, query PodLogQuery) (string, er
 		s.podLogFollow[name]++
 		logs = logs + fmt.Sprintf("[DEBUG] follow refresh tick=%d pod=%s\n", s.podLogFollow[name], name)
 	}
-	if strings.TrimSpace(query.Keyword) == "" {
-		return logs, nil
-	}
-
-	lines := strings.Split(logs, "\n")
-	needle := query.Keyword
-	if !query.CaseSensitive {
-		needle = strings.ToLower(needle)
-	}
-
-	matched := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		haystack := line
-		if !query.CaseSensitive {
-			haystack = strings.ToLower(line)
-		}
-		if strings.Contains(haystack, needle) {
-			matched = append(matched, line)
-		} else if !query.MatchOnly {
-			matched = append(matched, line)
-		}
-	}
-
-	if len(matched) == 0 {
-		return "", nil
-	}
-	return strings.Join(matched, "\n") + "\n", nil
+	return applyPodLogFilter(logs, query), nil
 }
 
 func (s *WorkloadService) GetTerminalCapabilities(name string) (TerminalCapabilities, error) {
-	if _, ok := s.podLogs[name]; !ok {
+	pod, err := s.GetPod(name)
+	if err != nil {
 		return TerminalCapabilities{}, fmt.Errorf("pod not found: %s", name)
 	}
 	return TerminalCapabilities{
-		Enabled:   false,
-		Protocols: []string{"websocket"},
-		Message:   "terminal gateway not enabled",
+		Enabled:    false,
+		Protocols:  []string{"websocket"},
+		Containers: []string{defaultContainerName(pod.Name)},
+		Message:    "terminal gateway not enabled",
 	}, nil
 }
 
@@ -449,6 +424,17 @@ func (s *WorkloadService) CreateTerminalSession(name string) error {
 		return fmt.Errorf("pod not found: %s", name)
 	}
 	return nil
+}
+
+func defaultContainerName(podName string) string {
+	if podName == "" {
+		return "main"
+	}
+	parts := strings.Split(podName, "-")
+	if len(parts) <= 2 {
+		return parts[0]
+	}
+	return strings.Join(parts[:len(parts)-2], "-")
 }
 
 func (s *WorkloadService) DeploymentNamespace(name string) (string, error) {

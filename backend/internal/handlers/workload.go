@@ -20,6 +20,10 @@ type UpdateYAMLRequest struct {
 	YAML string `json:"yaml"`
 }
 
+type createTerminalSessionRequest struct {
+	Container string `json:"container"`
+}
+
 func NewWorkloadHandler(workloadSvc *service.WorkloadService, liveWorkloadSvc *service.LiveWorkloadReader, adapterMode string) *WorkloadHandler {
 	return &WorkloadHandler{
 		workloadSvc:     workloadSvc,
@@ -176,16 +180,35 @@ func (h *WorkloadHandler) UpdatePodYAML(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "pod logs path not enabled in real-only mode"})
-		return
-	}
 	name := c.Param("name")
-	logs, err := h.workloadSvc.GetPodLogs(name, service.PodLogQuery{
+	query := service.PodLogQuery{
+		Container:     c.Query("container"),
 		Keyword:       c.Query("keyword"),
 		CaseSensitive: parseBool(c.Query("caseSensitive")),
 		MatchOnly:     parseBool(c.Query("matchOnly")),
 		Follow:        parseBool(c.Query("follow")),
+	}
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		logs, err := h.liveWorkloadSvc.GetPodLogs(c.Request.Context(), name, query)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "text/plain; charset=utf-8")
+		c.String(http.StatusOK, logs)
+		return
+	}
+
+	logs, err := h.workloadSvc.GetPodLogs(name, service.PodLogQuery{
+		Container:     query.Container,
+		Keyword:       query.Keyword,
+		CaseSensitive: query.CaseSensitive,
+		MatchOnly:     query.MatchOnly,
+		Follow:        query.Follow,
 	})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -196,11 +219,21 @@ func (h *WorkloadHandler) GetPodLogs(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) GetTerminalCapabilities(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "terminal capability path not enabled in real-only mode"})
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		caps, err := h.liveWorkloadSvc.GetTerminalCapabilities(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, caps)
 		return
 	}
-	name := c.Param("name")
+
 	caps, err := h.workloadSvc.GetTerminalCapabilities(name)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -210,11 +243,27 @@ func (h *WorkloadHandler) GetTerminalCapabilities(c *gin.Context) {
 }
 
 func (h *WorkloadHandler) CreateTerminalSession(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "terminal session path not enabled in real-only mode"})
+	name := c.Param("name")
+	var req createTerminalSessionRequest
+	_ = c.ShouldBindJSON(&req)
+
+	if h.adapterMode != "mock" && h.liveWorkloadSvc != nil {
+		if err := h.liveWorkloadSvc.CreateTerminalSession(c.Request.Context(), name, req.Container); err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusNotImplemented, gin.H{
+			"error":     "terminal websocket bridge pending",
+			"enabled":   true,
+			"container": req.Container,
+		})
 		return
 	}
-	name := c.Param("name")
+
 	if err := h.workloadSvc.CreateTerminalSession(name); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
