@@ -49,7 +49,15 @@ export default function ResourceTable<T>(props: Props<T>) {
         <TableHead>
           <TableRow>
             {props.columns.map((c) => (
-              <TableCell key={c.key} sx={{ width: c.width }}>
+              <TableCell
+                key={c.key}
+                sx={{
+                  width: c.width,
+                  fontWeight: 700,
+                  bgcolor: "#f2f6fc",
+                  borderBottomColor: "#dde6f3"
+                }}
+              >
                 {c.header}
               </TableCell>
             ))}
@@ -61,7 +69,10 @@ export default function ResourceTable<T>(props: Props<T>) {
               key={props.rowKey(row)}
               hover={Boolean(props.onRowClick)}
               onClick={() => props.onRowClick?.(row)}
-              sx={{ cursor: props.onRowClick ? "pointer" : "default" }}
+              sx={{
+                cursor: props.onRowClick ? "pointer" : "default",
+                "&:nth-of-type(even)": { bgcolor: "#fbfdff" }
+              }}
             >
               {props.columns.map((c) => (
                 <TableCell key={c.key}>{c.render(row)}</TableCell>

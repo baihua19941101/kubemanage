@@ -2,11 +2,13 @@ import {
   AppBar,
   Avatar,
   Box,
+  Breadcrumbs,
   Divider,
   Drawer,
   IconButton,
   List,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
   MenuItem,
   Select,
@@ -15,28 +17,37 @@ import {
   Typography
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import ClusterIcon from "@mui/icons-material/Hub";
+import WorkloadIcon from "@mui/icons-material/ViewQuilt";
+import ConfigIcon from "@mui/icons-material/Tune";
+import SecurityIcon from "@mui/icons-material/Security";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
-const drawerWidth = 252;
+const drawerWidth = 256;
 
 type NavItem = {
   group: string;
   label: string;
   path: string;
+  icon: ReactNode;
 };
 
 const navItems: NavItem[] = [
-  { group: "Cluster", label: "集群管理", path: "/cluster" },
-  { group: "Workloads", label: "工作负载", path: "/workloads" },
-  { group: "Configuration", label: "名称空间", path: "/namespaces" },
-  { group: "Configuration", label: "服务与配置", path: "/resources" },
-  { group: "Security", label: "权限与审计", path: "/auth-audit" }
+  { group: "Cluster", label: "集群管理", path: "/cluster", icon: <ClusterIcon fontSize="small" /> },
+  { group: "Workloads", label: "工作负载", path: "/workloads", icon: <WorkloadIcon fontSize="small" /> },
+  { group: "Configuration", label: "名称空间", path: "/namespaces", icon: <ConfigIcon fontSize="small" /> },
+  { group: "Configuration", label: "服务与配置", path: "/resources", icon: <ConfigIcon fontSize="small" /> },
+  { group: "Security", label: "权限与审计", path: "/auth-audit", icon: <SecurityIcon fontSize="small" /> }
 ];
 
 export default function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+
+  const current = navItems.find((n) => n.path === location.pathname);
 
   const grouped = useMemo(() => {
     const map = new Map<string, NavItem[]>();
@@ -50,17 +61,17 @@ export default function ShellLayout() {
   }, []);
 
   const drawer = (
-    <Box sx={{ height: "100%", bgcolor: "#f6f8fb" }}>
-      <Stack sx={{ px: 2, py: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: "#123d77" }}>
+    <Box sx={{ height: "100%", bgcolor: "#f4f7fb" }}>
+      <Stack sx={{ px: 2, py: 2.5 }}>
+        <Typography variant="h6" sx={{ fontWeight: 800, color: "#123d77", lineHeight: 1.1 }}>
           kubeManage
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Rancher 风格控制台
+          Rancher-like Console
         </Typography>
       </Stack>
       <Divider />
-      <List sx={{ px: 1 }}>
+      <List sx={{ px: 1, py: 1 }}>
         {grouped.map(([group, items]) => (
           <Box key={group} sx={{ mb: 1.5 }}>
             <Typography
@@ -69,18 +80,31 @@ export default function ShellLayout() {
             >
               {group}
             </Typography>
-            {items.map((item) => (
-              <ListItemButton
-                key={item.path}
-                component={NavLink}
-                to={item.path}
-                selected={location.pathname === item.path}
-                sx={{ borderRadius: 1.5, mx: 0.5, my: 0.2 }}
-                onClick={() => setMobileOpen(false)}
-              >
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            ))}
+            {items.map((item) => {
+              const active = location.pathname === item.path;
+              return (
+                <ListItemButton
+                  key={item.path}
+                  component={NavLink}
+                  to={item.path}
+                  selected={active}
+                  sx={{
+                    borderRadius: 1.5,
+                    mx: 0.5,
+                    my: 0.2,
+                    bgcolor: active ? "#dce9fb" : "transparent",
+                    color: active ? "#0b3b75" : "inherit",
+                    "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                  }}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
           </Box>
         ))}
       </List>
@@ -88,7 +112,7 @@ export default function ShellLayout() {
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#eef2f7" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#edf2f8" }}>
       <AppBar
         position="fixed"
         sx={{
@@ -96,29 +120,43 @@ export default function ShellLayout() {
           ml: { sm: `${drawerWidth}px` },
           bgcolor: "#ffffff",
           color: "#0f2f5d",
-          boxShadow: "0 1px 2px rgba(15,47,93,.08)"
+          borderBottom: "1px solid #dce4ef",
+          boxShadow: "none"
         }}
       >
-        <Toolbar sx={{ justifyContent: "space-between" }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={() => setMobileOpen((v) => !v)}
-              sx={{ display: { sm: "none" } }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {navItems.find((n) => n.path === location.pathname)?.label || "控制台"}
-            </Typography>
+        <Toolbar sx={{ justifyContent: "space-between", minHeight: 64 }}>
+          <Stack spacing={0.5}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <IconButton
+                color="inherit"
+                edge="start"
+                onClick={() => setMobileOpen((v) => !v)}
+                sx={{ display: { sm: "none" } }}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                {current?.label || "控制台"}
+              </Typography>
+            </Stack>
+            <Breadcrumbs separator={<ChevronRightIcon fontSize="small" />} sx={{ color: "text.secondary" }}>
+              <Typography variant="caption" color="text.secondary">
+                Cluster Explorer
+              </Typography>
+              <Typography variant="caption" color="text.primary">
+                {current?.group || "General"}
+              </Typography>
+              <Typography variant="caption" color="text.primary">
+                {current?.label || "Overview"}
+              </Typography>
+            </Breadcrumbs>
           </Stack>
           <Stack direction="row" spacing={2} alignItems="center">
-            <Select size="small" value="default" sx={{ minWidth: 160 }}>
+            <Select size="small" value="default" sx={{ minWidth: 170 }}>
               <MenuItem value="default">default-cluster</MenuItem>
             </Select>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar sx={{ width: 30, height: 30 }}>A</Avatar>
+              <Avatar sx={{ width: 30, height: 30, bgcolor: "#1d4f91" }}>A</Avatar>
               <Typography variant="body2">admin</Typography>
             </Stack>
           </Stack>

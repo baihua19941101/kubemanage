@@ -11,8 +11,15 @@ type Props = {
 
 export default function PageScaffold(props: Props) {
   return (
-    <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2 }}>
+    <Stack spacing={2.2}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderColor: "#d7e1ef",
+          boxShadow: "0 1px 2px rgba(25,40,64,.04)"
+        }}
+      >
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
@@ -34,12 +41,17 @@ export default function PageScaffold(props: Props) {
       </Paper>
 
       {props.toolbar && (
-        <Paper variant="outlined" sx={{ p: 1.5 }}>
+        <Paper
+          variant="outlined"
+          sx={{ p: 1.5, borderColor: "#d7e1ef", bgcolor: "#f8fbff" }}
+        >
           {props.toolbar}
         </Paper>
       )}
 
-      <Paper variant="outlined">{props.children}</Paper>
+      <Paper variant="outlined" sx={{ borderColor: "#d7e1ef" }}>
+        {props.children}
+      </Paper>
     </Stack>
   );
 }
