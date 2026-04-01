@@ -22,7 +22,7 @@ type AuthState = {
   refreshToken: string;
   authenticated: boolean;
   bootstrap: () => Promise<void>;
-  login: (username: string, password: string) => Promise<LoginResult>;
+  login: (username: string, password: string, provider?: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   setRole: (role: string) => void;
   canClusterManage: () => boolean;
@@ -120,11 +120,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       authenticated: true
     });
   },
-  login: async (username: string, password: string) => {
+  login: async (username: string, password: string, provider = "local") => {
     const resp = await apiFetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, provider })
     });
     if (!resp.ok) {
       const err = await parseApiError(resp, "登录失败");

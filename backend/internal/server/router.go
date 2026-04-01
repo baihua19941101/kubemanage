@@ -30,6 +30,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 			parseDurationSeconds("KM_AUTH_REFRESH_TTL_SECONDS", 604800),
 		)
 		_ = authSvc.EnsureDefaultAdmin(context.Background())
+		_ = authSvc.EnsureDefaultProviders(context.Background())
 	}
 	auditSvc := service.NewAuditService()
 	r.Use(middleware.InjectRole(authSvc))
@@ -113,7 +114,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		api.POST("/auth/login", authHandler.Login)
 		api.POST("/auth/refresh", authHandler.Refresh)
 		api.GET("/auth/me", authHandler.GetMe)
+		api.GET("/auth/providers/public", authHandler.ListPublicAuthProviders)
 		api.GET("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListUsers)
+		api.GET("/auth/providers", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListAuthProviders)
 		api.GET("/audits", middleware.RequirePermission(authSvc, service.PermAuditRead), auditHandler.ListAudits)
 	}
 
@@ -129,6 +132,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.PATCH("/auth/users/:username/status", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_user_status"), authHandler.UpdateUserStatus)
 		write.PATCH("/auth/users/:username", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_user_profile"), authHandler.UpdateUserProfile)
 		write.POST("/auth/users/:username/reset-password", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("reset_user_password"), authHandler.ResetUserPassword)
+		write.POST("/auth/providers", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("create_auth_provider"), authHandler.CreateAuthProvider)
+		write.PATCH("/auth/providers/:id/status", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_auth_provider_status"), authHandler.UpdateAuthProviderStatus)
+		write.POST("/auth/providers/:id/default", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("set_default_auth_provider"), authHandler.SetDefaultAuthProvider)
 		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), middleware.RequireActionConfirm("create_namespace"), namespaceHandler.CreateNamespace)
 		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), middleware.RequireActionConfirm("delete_namespace"), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {

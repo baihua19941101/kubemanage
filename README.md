@@ -312,6 +312,30 @@ curl -X PATCH http://localhost:8080/api/v1/auth/users/readonly1 \
   -d '{"role":"standard-user","allowedNamespaces":["dev","qa"]}'
 ```
 
+查看公开认证源列表（登录页使用）：
+
+```bash
+curl http://localhost:8080/api/v1/auth/providers/public
+```
+
+管理员创建 LDAP 认证源：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/providers \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"corp-ldap","type":"ldap","config":{"url":"ldap://127.0.0.1:389","baseDN":"dc=example,dc=com"}}'
+```
+
+管理员设置默认认证源：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/providers/2/default \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM"
+```
+
 以 viewer 角色尝试删除名称空间（应返回 403）：
 
 ```bash
@@ -353,6 +377,12 @@ P701 细粒度授权冒烟脚本：
 
 ```bash
 bash scripts/p701_fine_grained_auth_smoke_test.sh
+```
+
+P801 认证源管理冒烟脚本：
+
+```bash
+bash scripts/p801_auth_provider_smoke_test.sh
 ```
 
 ## 开发原则
@@ -859,6 +889,33 @@ bash scripts/p701_fine_grained_auth_smoke_test.sh
   - `scripts/p701_fine_grained_auth_smoke_test.sh` 冒烟脚本
 - 验证结果：`go test ./...`、`npm run build`、`scripts/p701_fine_grained_auth_smoke_test.sh` 全部通过
 
+### P801 计划（2026-04-01）
+
+#### 范围定义
+- 目标：落地 OAuth/LDAP 前的认证源管理基础能力，统一登录入口的 provider 语义
+- 本轮聚焦：`local + ldap` 认证源配置与选择逻辑，先不接入真实 LDAP Bind 与 OAuth 回调
+
+#### 能力范围
+- 后端新增认证源模型与管理接口（列表、创建、启停、设为默认）
+- 登录接口支持 `provider` 入参；若选择 `ldap`，返回明确“未实现”错误，避免静默回退
+- 前端登录页增加认证源选择（默认跟随后端返回的默认 provider）
+
+#### 开发拆分
+1. `P801-A`：认证源数据模型与后端接口
+2. `P801-B`：登录入口 provider 参数扩展与错误语义
+3. `P801-C`：前端登录页 provider 选择与联调
+4. `P801-D`：回归与冒烟验收
+
+#### 当前状态
+- 状态：`已完成`
+- 已交付：
+  - 认证源模型 `auth_providers`（`local/ldap`）及默认初始化
+  - 认证源接口：`GET /auth/providers/public`、`GET /auth/providers`、`POST /auth/providers`、`PATCH /auth/providers/:id/status`、`POST /auth/providers/:id/default`
+  - 登录接口支持 `provider` 参数（默认 provider 为 `ldap` 时返回 `501 not implemented`）
+  - 前端登录页新增认证源选择器（默认读取后端公开认证源）
+  - `scripts/p801_auth_provider_smoke_test.sh` 冒烟脚本
+- 验证结果：`go test ./...`、`npm run build`、`scripts/p801_auth_provider_smoke_test.sh` 全部通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -869,7 +926,7 @@ bash scripts/p701_fine_grained_auth_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第七阶段（P701 已完成）`
-- 当前任务：`P701：细粒度授权基础能力（已完成）`
-- 当前状态：`已交付用户角色/授权范围在线编辑能力并通过联调验收`
-- 下一任务：`第八阶段规划（OAuth/LDAP 接入与企业身份源整合）`
+- 当前阶段：`第八阶段（P801 已完成）`
+- 当前任务：`P801：认证源管理基础能力（local/ldap）（已完成）`
+- 当前状态：`已交付认证源模型、管理接口、登录 provider 语义与登录页选择器`
+- 下一任务：`第九阶段规划（真实 LDAP Bind 与 OAuth 回调接入）`

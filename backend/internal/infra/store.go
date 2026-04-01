@@ -36,7 +36,7 @@ func NewStore(cfg config.Config) (*Store, error) {
 		return nil, fmt.Errorf("ping mysql failed: %w", err)
 	}
 
-	if err := db.AutoMigrate(&ClusterConnectionRecord{}, &UserRecord{}, &RefreshTokenRecord{}); err != nil {
+	if err := db.AutoMigrate(&ClusterConnectionRecord{}, &UserRecord{}, &RefreshTokenRecord{}, &AuthProviderRecord{}); err != nil {
 		return nil, fmt.Errorf("auto migrate cluster connections failed: %w", err)
 	}
 
