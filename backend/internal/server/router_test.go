@@ -222,6 +222,27 @@ func TestResourceEndpoints(t *testing.T) {
 	if w8.Code != http.StatusOK {
 		t.Fatalf("get hpa target failed: %d body=%s", w8.Code, w8.Body.String())
 	}
+
+	req9, _ := http.NewRequest(http.MethodGet, "/api/v1/pvs", nil)
+	w9 := httptest.NewRecorder()
+	r.ServeHTTP(w9, req9)
+	if w9.Code != http.StatusOK {
+		t.Fatalf("list pvs failed: %d body=%s", w9.Code, w9.Body.String())
+	}
+
+	req10, _ := http.NewRequest(http.MethodGet, "/api/v1/pvcs", nil)
+	w10 := httptest.NewRecorder()
+	r.ServeHTTP(w10, req10)
+	if w10.Code != http.StatusOK {
+		t.Fatalf("list pvcs failed: %d body=%s", w10.Code, w10.Body.String())
+	}
+
+	req11, _ := http.NewRequest(http.MethodGet, "/api/v1/storageclasses", nil)
+	w11 := httptest.NewRecorder()
+	r.ServeHTTP(w11, req11)
+	if w11.Code != http.StatusOK {
+		t.Fatalf("list storageclasses failed: %d body=%s", w11.Code, w11.Body.String())
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {

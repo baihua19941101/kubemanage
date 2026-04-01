@@ -212,6 +212,24 @@ HPA 目标查询：
 curl http://localhost:8080/api/v1/hpas/web-api-hpa/target
 ```
 
+PV 列表：
+
+```bash
+curl http://localhost:8080/api/v1/pvs
+```
+
+PVC 列表：
+
+```bash
+curl http://localhost:8080/api/v1/pvcs
+```
+
+StorageClass 列表：
+
+```bash
+curl http://localhost:8080/api/v1/storageclasses
+```
+
 ConfigMap 列表：
 
 ```bash
@@ -413,9 +431,11 @@ bash scripts/rebuild_qa.sh
 - 导航：按域分组（Cluster / Workloads / Service Discovery / Storage / Security / Audit）
 - 页面容器：统一 `PageHeader + Toolbar + TableArea + DetailPanel`
 - 状态：路由状态统一由 `react-router` 管理，业务状态保持 `Zustand`
-- 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Configuration / Security`，点击一级菜单展开二级子菜单
-- Workloads 二级菜单包含：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
-- Workloads 路由拆分为子路由：`/workloads/deployments|pods|statefulsets|daemonsets|jobs|cronjobs`
+- 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Service Discovery / Storage / Security`，点击一级菜单展开二级子菜单
+- Workloads 二级菜单：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
+- Service Discovery 二级菜单：`Service / Ingress / HPA`
+- Storage 二级菜单：`PersistentVolumes / PersistentVolumeClaims / StorageClasses / ConfigMaps / Secrets`
+- 所有二级资源页面布局统一对齐 Workloads（筛选栏 + 资源表 + 详情抽屉）
 
 ## 任务计划
 
@@ -469,6 +489,6 @@ bash scripts/rebuild_qa.sh
 ## 任务状态
 
 - 当前阶段：`第二阶段（功能扩展进行中）`
-- 当前任务：`P203：服务发现扩展（已完成）`
-- 当前状态：`Ingress/HPA 已支持列表/详情与关联查询，联调验证通过`
-- 下一任务：`P204：存储管理扩展（PV/PVC/StorageClass）`
+- 当前任务：`P203/P204：服务发现与存储菜单及资源能力对齐（已完成）`
+- 当前状态：`Service Discovery/Storage 已独立为一级菜单，子资源布局已与 Workloads 对齐`
+- 下一任务：`P205：日志与调试增强`
