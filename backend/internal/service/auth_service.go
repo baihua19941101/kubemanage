@@ -3,6 +3,7 @@ package service
 type Permission string
 
 const (
+	PermClusterManage  Permission = "cluster:manage"
 	PermNamespaceWrite Permission = "namespace:write"
 	PermWorkloadWrite  Permission = "workload:write"
 	PermAuditRead      Permission = "audit:read"
@@ -28,6 +29,7 @@ func NewAuthService() *AuthService {
 				PermWorkloadWrite:  true,
 			},
 			RoleAdmin: {
+				PermClusterManage:  true,
 				PermNamespaceWrite: true,
 				PermWorkloadWrite:  true,
 				PermAuditRead:      true,

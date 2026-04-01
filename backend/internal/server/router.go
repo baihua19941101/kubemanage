@@ -21,7 +21,15 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	if store != nil {
 		clusterSvc = service.NewClusterService(store.Redis)
 	}
+	var clusterConnectionRepo service.ClusterConnectionRepository
+	var clusterConnectionAdapter service.K8sAdapter
+	if store != nil && store.DB != nil {
+		clusterConnectionRepo = service.NewGormClusterConnectionRepo(store.DB)
+		clusterConnectionAdapter = service.NewRealK8sAdapter()
+	}
+	clusterConnectionSvc := service.NewClusterConnectionService(clusterConnectionRepo, clusterConnectionAdapter)
 	clusterHandler := handlers.NewClusterHandler(clusterSvc)
+	clusterConnectionHandler := handlers.NewClusterConnectionHandler(clusterConnectionSvc)
 	namespaceSvc := service.NewNamespaceService()
 	workloadSvc := service.NewWorkloadService()
 	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc)
@@ -35,7 +43,10 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		api.GET("/healthz", handlers.Healthz)
 		api.GET("/clusters", clusterHandler.ListClusters)
 		api.GET("/clusters/current", clusterHandler.GetCurrentCluster)
+		api.GET("/clusters/connections", clusterConnectionHandler.ListConnections)
+		api.GET("/clusters/live", clusterConnectionHandler.GetLiveCluster)
 		api.GET("/namespaces", namespaceHandler.ListNamespaces)
+		api.GET("/namespaces/live", clusterConnectionHandler.ListLiveNamespaces)
 		api.GET("/namespaces/:name/yaml", namespaceHandler.GetNamespaceYAML)
 		api.GET("/namespaces/:name/yaml/download", namespaceHandler.DownloadNamespaceYAML)
 		api.GET("/deployments", workloadHandler.ListDeployments)
@@ -83,6 +94,10 @@ func NewRouter(store *infra.Store) *gin.Engine {
 	write := api.Group("", middleware.WriteAudit(auditSvc))
 	{
 		write.POST("/clusters/switch", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), clusterHandler.SwitchCluster)
+		write.POST("/clusters/connections/import/kubeconfig", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.ImportKubeconfig)
+		write.POST("/clusters/connections/import/token", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.ImportToken)
+		write.POST("/clusters/connections/test", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.TestConnection)
+		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.Activate)
 		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), namespaceHandler.CreateNamespace)
 		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {

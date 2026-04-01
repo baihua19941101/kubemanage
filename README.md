@@ -494,6 +494,67 @@ bash scripts/rebuild_qa.sh
 4. 前端集群导入与连接测试页面
 5. 联调与回归（接口测试、前端构建、P301 冒烟脚本）
 
+#### 技术方案（执行版）
+
+##### 连接配置模型
+- 存储实体：`cluster_connections`
+- 核心字段：
+  - `id`
+  - `name`
+  - `mode`：`kubeconfig` / `token`
+  - `api_server`
+  - `kubeconfig_content`
+  - `bearer_token`
+  - `ca_cert`
+  - `skip_tls_verify`
+  - `is_default`
+  - `status`：`connected` / `failed` / `unknown`
+  - `last_checked_at`
+  - `last_error`
+- 安全要求：
+  - `bearer_token`、`kubeconfig_content`、`ca_cert` 不在列表接口明文返回
+  - 前端详情页仅展示脱敏摘要
+
+##### 导入协议
+- `kubeconfig` 导入：
+  - 表单字段：`name`、`kubeconfigContent`
+  - 后端自动解析当前 context、server、certificate 信息
+- `API Server + Token + CA` 导入：
+  - 表单字段：`name`、`apiServer`、`bearerToken`、`caCert`、`skipTLSVerify`
+  - 允许 `caCert` 为空且 `skipTLSVerify=true` 的测试模式
+
+##### 首批接口设计
+- `GET /api/v1/clusters/connections`
+- `POST /api/v1/clusters/connections/import/kubeconfig`
+- `POST /api/v1/clusters/connections/import/token`
+- `POST /api/v1/clusters/connections/test`
+- `POST /api/v1/clusters/connections/:id/activate`
+- `GET /api/v1/clusters/live`
+- `GET /api/v1/namespaces/live`
+
+##### adapter 分层
+- `handlers`
+  - 仅负责协议解析与响应格式
+- `service`
+  - 负责导入校验、连接测试、当前集群切换
+- `adapter`
+  - 新增 `k8s client adapter`，统一封装 `client-go`
+- `infra/store`
+  - 承担连接配置持久化
+
+##### 数据源切换策略
+- 保留现有示例数据服务作为 fallback
+- 当“当前集群”为真实连接且连接测试通过时，`clusters/namespaces` 优先走 live adapter
+- 当连接不可用时，接口返回明确错误，不静默回退到 mock 数据
+
+##### P301 首批验收标准
+- 能成功导入 `kubeconfig` 集群连接
+- 能成功导入 `API Server + Token + CA` 集群连接
+- 能执行连接测试并返回成功/失败原因
+- 当前集群激活后，`clusters` / `namespaces` 能从真实集群读取
+- 敏感字段不在列表接口明文泄漏
+- 后端 `go test ./...`、前端 `npm run build`、`P301` 冒烟脚本通过
+
 ### P205 MVP 计划（2026-04-01）
 
 #### 范围定义
@@ -584,5 +645,5 @@ bash scripts/rebuild_qa.sh
 
 - 当前阶段：`第三阶段（规划与 P301 准备中）`
 - 当前任务：`P301：真实集群接入与导入（扩展方案）`
-- 当前状态：`已确认第三阶段第一优先级为真实集群接入，首批支持 kubeconfig 与 API Server + Token + CA 导入`
+- 当前状态：`已完成 P301 前后端最小闭环：真实集群导入、连接测试、激活与 live cluster/namespaces 预览均已接通`
 - 下一任务：`P301：真实集群接入与导入`

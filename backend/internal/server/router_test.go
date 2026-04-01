@@ -48,6 +48,48 @@ func TestClusters(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
 	}
+
+	importReq := requestWithRole(http.MethodPost, "/api/v1/clusters/connections/import/token", `{"name":"dev-live","apiServer":"https://k8s.example.local","bearerToken":"token-123","caCert":"ca","skipTlsVerify":true}`, "admin")
+	importW := httptest.NewRecorder()
+	r.ServeHTTP(importW, importReq)
+	if importW.Code != http.StatusCreated {
+		t.Fatalf("import token cluster connection failed: %d body=%s", importW.Code, importW.Body.String())
+	}
+
+	listConnReq := requestWithRole(http.MethodGet, "/api/v1/clusters/connections", "", "admin")
+	listConnW := httptest.NewRecorder()
+	r.ServeHTTP(listConnW, listConnReq)
+	if listConnW.Code != http.StatusOK {
+		t.Fatalf("list cluster connections failed: %d body=%s", listConnW.Code, listConnW.Body.String())
+	}
+
+	testConnReq := requestWithRole(http.MethodPost, "/api/v1/clusters/connections/test", `{"mode":"token","apiServer":"https://k8s.example.local","bearerToken":"token-123","caCert":"ca","skipTlsVerify":true}`, "admin")
+	testConnW := httptest.NewRecorder()
+	r.ServeHTTP(testConnW, testConnReq)
+	if testConnW.Code != http.StatusOK {
+		t.Fatalf("test cluster connection failed: %d body=%s", testConnW.Code, testConnW.Body.String())
+	}
+
+	activateReq := requestWithRole(http.MethodPost, "/api/v1/clusters/connections/1/activate", "", "admin")
+	activateW := httptest.NewRecorder()
+	r.ServeHTTP(activateW, activateReq)
+	if activateW.Code != http.StatusNoContent {
+		t.Fatalf("activate cluster connection failed: %d body=%s", activateW.Code, activateW.Body.String())
+	}
+
+	liveClusterReq := requestWithRole(http.MethodGet, "/api/v1/clusters/live", "", "viewer")
+	liveClusterW := httptest.NewRecorder()
+	r.ServeHTTP(liveClusterW, liveClusterReq)
+	if liveClusterW.Code != http.StatusOK {
+		t.Fatalf("get live cluster failed: %d body=%s", liveClusterW.Code, liveClusterW.Body.String())
+	}
+
+	liveNamespacesReq := requestWithRole(http.MethodGet, "/api/v1/namespaces/live", "", "viewer")
+	liveNamespacesW := httptest.NewRecorder()
+	r.ServeHTTP(liveNamespacesW, liveNamespacesReq)
+	if liveNamespacesW.Code != http.StatusOK {
+		t.Fatalf("get live namespaces failed: %d body=%s", liveNamespacesW.Code, liveNamespacesW.Body.String())
+	}
 }
 
 func TestSwitchCluster(t *testing.T) {
@@ -340,5 +382,12 @@ func TestRBACAndAudit(t *testing.T) {
 	r.ServeHTTP(filterW, filterReq)
 	if filterW.Code != http.StatusOK {
 		t.Fatalf("filtered audit read failed: %d body=%s", filterW.Code, filterW.Body.String())
+	}
+
+	clusterManageDenyReq := requestWithRole(http.MethodPost, "/api/v1/clusters/connections/import/token", `{"name":"deny-live","apiServer":"https://deny","bearerToken":"x"}`, "operator")
+	clusterManageDenyW := httptest.NewRecorder()
+	r.ServeHTTP(clusterManageDenyW, clusterManageDenyReq)
+	if clusterManageDenyW.Code != http.StatusForbidden {
+		t.Fatalf("operator should be forbidden to import cluster connections, got %d", clusterManageDenyW.Code)
 	}
 }

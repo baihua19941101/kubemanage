@@ -36,6 +36,10 @@ func NewStore(cfg config.Config) (*Store, error) {
 		return nil, fmt.Errorf("ping mysql failed: %w", err)
 	}
 
+	if err := db.AutoMigrate(&ClusterConnectionRecord{}); err != nil {
+		return nil, fmt.Errorf("auto migrate cluster connections failed: %w", err)
+	}
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddr,
 		Password: cfg.RedisPass,
