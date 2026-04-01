@@ -389,6 +389,9 @@ bash scripts/rebuild_qa.sh
 - 导航：按域分组（Cluster / Workloads / Service Discovery / Storage / Security / Audit）
 - 页面容器：统一 `PageHeader + Toolbar + TableArea + DetailPanel`
 - 状态：路由状态统一由 `react-router` 管理，业务状态保持 `Zustand`
+- 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Configuration / Security`，点击一级菜单展开二级子菜单
+- Workloads 二级菜单包含：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
+- Workloads 路由拆分为子路由：`/workloads/deployments|pods|statefulsets|daemonsets|jobs|cronjobs`
 
 ## 任务计划
 
@@ -412,6 +415,25 @@ bash scripts/rebuild_qa.sh
 6. 权限与审计增强（命名空间级授权、审计筛选）
 7. 第二阶段联调与验收测试
 
+### P202 重启计划（2026-04-01）
+
+#### 范围定义
+- 资源范围：`StatefulSet`、`DaemonSet`、`Job`、`CronJob`
+- 能力范围：列表、详情、YAML 查看、YAML 编辑保存
+- 本轮不纳入：真实集群接入、批量操作、高级筛选、任务手动触发与暂停
+
+#### 开发拆分
+1. 后端 `service` 扩展（4 类资源示例数据与 YAML 存取）
+2. 后端 `handler/router` 扩展（读写接口 + RBAC + 写操作审计）
+3. 前端工作负载页重建（4 类资源表格/详情抽屉/YAML 编辑）
+4. 联调与回归（接口测试 + 前端构建 + 冒烟脚本）
+
+#### P202 验收标准（执行版）
+- 4 类资源均支持“列表-详情-YAML 查看-YAML 保存”闭环
+- `viewer` 无法写入 YAML（403），`operator/admin` 可写入（204）
+- 前端 `workloads` 页面可正常访问，`npm run build` 通过
+- 后端 `go test ./...` 通过，且新增接口纳入路由测试
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -422,7 +444,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第二阶段（Rancher 风格重构已完成）`
-- 当前任务：`R5：重构后联调与验收`
-- 当前状态：`已完成`
-- 下一任务：`P202：工作负载扩展`
+- 当前阶段：`第二阶段（功能扩展进行中）`
+- 当前任务：`P202：工作负载扩展（已完成）`
+- 当前状态：`导航已调整为两级菜单，一级点击展开二级资源菜单（不再三级）`
+- 下一任务：`P203：服务发现扩展（Ingress/HPA）`

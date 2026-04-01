@@ -13,7 +13,13 @@ export default function App() {
         <Route index element={<Navigate to="/cluster" replace />} />
         <Route path="cluster" element={<ClusterPage />} />
         <Route path="namespaces" element={<NamespacePage />} />
-        <Route path="workloads" element={<WorkloadPage />} />
+        <Route path="workloads" element={<Navigate to="/workloads/deployments" replace />} />
+        <Route path="workloads/deployments" element={<WorkloadPage initialMode="deployments" showModeSwitcher={false} />} />
+        <Route path="workloads/pods" element={<WorkloadPage initialMode="pods" showModeSwitcher={false} />} />
+        <Route path="workloads/statefulsets" element={<WorkloadPage initialMode="statefulsets" showModeSwitcher={false} />} />
+        <Route path="workloads/daemonsets" element={<WorkloadPage initialMode="daemonsets" showModeSwitcher={false} />} />
+        <Route path="workloads/jobs" element={<WorkloadPage initialMode="jobs" showModeSwitcher={false} />} />
+        <Route path="workloads/cronjobs" element={<WorkloadPage initialMode="cronjobs" showModeSwitcher={false} />} />
         <Route path="resources" element={<ResourcePage />} />
         <Route path="auth-audit" element={<AuthAuditPage />} />
       </Route>
