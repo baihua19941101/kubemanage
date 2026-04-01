@@ -31,44 +31,80 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 const drawerWidth = 256;
 
-type NavLeaf = {
-  group: string;
+type NavChild = {
   label: string;
   path: string;
-  icon: ReactNode;
 };
 
-const navItems: NavLeaf[] = [
-  { group: "Cluster", label: "集群管理", path: "/cluster", icon: <ClusterIcon fontSize="small" /> },
-  { group: "Workloads", label: "Deployment", path: "/workloads/deployments", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Workloads", label: "Pod", path: "/workloads/pods", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Workloads", label: "StatefulSet", path: "/workloads/statefulsets", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Workloads", label: "DaemonSet", path: "/workloads/daemonsets", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Workloads", label: "Job", path: "/workloads/jobs", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Workloads", label: "CronJob", path: "/workloads/cronjobs", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Configuration", label: "名称空间", path: "/namespaces", icon: <ConfigIcon fontSize="small" /> },
-  { group: "Configuration", label: "服务与配置", path: "/resources", icon: <ConfigIcon fontSize="small" /> },
-  { group: "Security", label: "权限与审计", path: "/auth-audit", icon: <SecurityIcon fontSize="small" /> }
+type NavSection = {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  children: NavChild[];
+};
+
+const navSections: NavSection[] = [
+  {
+    key: "cluster",
+    label: "Cluster",
+    icon: <ClusterIcon fontSize="small" />,
+    children: [{ label: "集群管理", path: "/cluster" }]
+  },
+  {
+    key: "workloads",
+    label: "Workloads",
+    icon: <WorkloadIcon fontSize="small" />,
+    children: [
+      { label: "Deployment", path: "/workloads/deployments" },
+      { label: "Pod", path: "/workloads/pods" },
+      { label: "StatefulSet", path: "/workloads/statefulsets" },
+      { label: "DaemonSet", path: "/workloads/daemonsets" },
+      { label: "Job", path: "/workloads/jobs" },
+      { label: "CronJob", path: "/workloads/cronjobs" }
+    ]
+  },
+  {
+    key: "configuration",
+    label: "Configuration",
+    icon: <ConfigIcon fontSize="small" />,
+    children: [
+      { label: "名称空间", path: "/namespaces" },
+      { label: "服务与配置", path: "/resources" }
+    ]
+  },
+  {
+    key: "security",
+    label: "Security",
+    icon: <SecurityIcon fontSize="small" />,
+    children: [{ label: "权限与审计", path: "/auth-audit" }]
+  }
 ];
+
+function makeInitialOpenState(pathname: string): Record<string, boolean> {
+  const state: Record<string, boolean> = {};
+  for (const section of navSections) {
+    state[section.key] = section.children.some((child) => child.path === pathname);
+  }
+  if (!Object.values(state).some(Boolean)) {
+    state.cluster = true;
+  }
+  return state;
+}
 
 export default function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [workloadsOpen, setWorkloadsOpen] = useState(true);
   const location = useLocation();
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>(() => makeInitialOpenState(location.pathname));
 
-  const current = navItems.find((leaf) => leaf.path === location.pathname);
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, NavLeaf[]>();
-    for (const item of navItems) {
-      const group = item.group;
-      if (!map.has(group)) {
-        map.set(group, []);
+  const current = useMemo(() => {
+    for (const section of navSections) {
+      const child = section.children.find((item) => item.path === location.pathname);
+      if (child) {
+        return { section, child };
       }
-      map.get(group)!.push(item);
     }
-    return Array.from(map.entries());
-  }, []);
+    return null;
+  }, [location.pathname]);
 
   const drawer = (
     <Box sx={{ height: "100%", bgcolor: "#f4f7fb" }}>
@@ -82,92 +118,59 @@ export default function ShellLayout() {
       </Stack>
       <Divider />
       <List sx={{ px: 1, py: 1 }}>
-        {grouped.map(([group, items]) => (
-          <Box key={group} sx={{ mb: 1.5 }}>
-            <Typography
-              variant="overline"
-              sx={{ px: 1.5, color: "text.secondary", letterSpacing: 0.8 }}
-            >
-              {group}
-            </Typography>
-            {group !== "Workloads" &&
-              items.map((entry) => {
-                const active = location.pathname === entry.path;
-                return (
-                  <ListItemButton
-                    key={entry.path}
-                    component={NavLink}
-                    to={entry.path}
-                    selected={active}
-                    sx={{
-                      borderRadius: 1.5,
-                      mx: 0.5,
-                      my: 0.2,
-                      bgcolor: active ? "#dce9fb" : "transparent",
-                      color: active ? "#0b3b75" : "inherit",
-                      "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
-                    }}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
-                      {entry.icon}
-                    </ListItemIcon>
-                    <ListItemText primary={entry.label} />
-                  </ListItemButton>
-                );
-              })}
+        {navSections.map((section) => {
+          const sectionActive = section.children.some((child) => child.path === location.pathname);
+          const sectionOpen = openMap[section.key] ?? false;
 
-            {group === "Workloads" && (
-              <>
-                <ListItemButton
-                  selected={location.pathname.startsWith("/workloads/")}
-                  onClick={() => setWorkloadsOpen((prev) => !prev)}
-                  sx={{
-                    borderRadius: 1.5,
-                    mx: 0.5,
-                    my: 0.2,
-                    bgcolor: location.pathname.startsWith("/workloads/") ? "#dce9fb" : "transparent",
-                    color: location.pathname.startsWith("/workloads/") ? "#0b3b75" : "inherit",
-                    "&:hover": { bgcolor: location.pathname.startsWith("/workloads/") ? "#dce9fb" : "#eaf1fb" }
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
-                    <WorkloadIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="工作负载" />
-                  {workloadsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                </ListItemButton>
-                <Collapse in={workloadsOpen} timeout="auto" unmountOnExit>
-                  <List disablePadding sx={{ pl: 1.5 }}>
-                    {items.map((entry) => {
-                      const active = location.pathname === entry.path;
-                      return (
-                        <ListItemButton
-                          key={entry.path}
-                          component={NavLink}
-                          to={entry.path}
-                          selected={active}
-                          sx={{
-                            borderRadius: 1.5,
-                            mx: 0.5,
-                            my: 0.1,
-                            pl: 4,
-                            bgcolor: active ? "#dce9fb" : "transparent",
-                            color: active ? "#0b3b75" : "inherit",
-                            "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
-                          }}
-                          onClick={() => setMobileOpen(false)}
-                        >
-                          <ListItemText primary={entry.label} primaryTypographyProps={{ variant: "body2" }} />
-                        </ListItemButton>
-                      );
-                    })}
-                  </List>
-                </Collapse>
-              </>
-            )}
-          </Box>
-        ))}
+          return (
+            <Box key={section.key} sx={{ mb: 1 }}>
+              <ListItemButton
+                onClick={() => setOpenMap((prev) => ({ ...prev, [section.key]: !sectionOpen }))}
+                selected={sectionActive}
+                sx={{
+                  borderRadius: 1.5,
+                  mx: 0.5,
+                  my: 0.2,
+                  bgcolor: sectionActive ? "#dce9fb" : "transparent",
+                  color: sectionActive ? "#0b3b75" : "inherit",
+                  "&:hover": { bgcolor: sectionActive ? "#dce9fb" : "#eaf1fb" }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>{section.icon}</ListItemIcon>
+                <ListItemText primary={section.label} />
+                {sectionOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+              </ListItemButton>
+
+              <Collapse in={sectionOpen} timeout="auto" unmountOnExit>
+                <List disablePadding sx={{ pl: 1.5 }}>
+                  {section.children.map((child) => {
+                    const active = location.pathname === child.path;
+                    return (
+                      <ListItemButton
+                        key={child.path}
+                        component={NavLink}
+                        to={child.path}
+                        selected={active}
+                        sx={{
+                          borderRadius: 1.5,
+                          mx: 0.5,
+                          my: 0.1,
+                          pl: 4,
+                          bgcolor: active ? "#dce9fb" : "transparent",
+                          color: active ? "#0b3b75" : "inherit",
+                          "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                        }}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <ListItemText primary={child.label} primaryTypographyProps={{ variant: "body2" }} />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              </Collapse>
+            </Box>
+          );
+        })}
       </List>
     </Box>
   );
@@ -197,7 +200,7 @@ export default function ShellLayout() {
                 <MenuIcon />
               </IconButton>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                {current?.label || "控制台"}
+                {current?.child.label || "控制台"}
               </Typography>
             </Stack>
             <Breadcrumbs separator={<ChevronRightIcon fontSize="small" />} sx={{ color: "text.secondary" }}>
@@ -205,10 +208,10 @@ export default function ShellLayout() {
                 Cluster Explorer
               </Typography>
               <Typography variant="caption" color="text.primary">
-                {current?.group || "General"}
+                {current?.section.label || "General"}
               </Typography>
               <Typography variant="caption" color="text.primary">
-                {current?.label || "Overview"}
+                {current?.child.label || "Overview"}
               </Typography>
             </Breadcrumbs>
           </Stack>
