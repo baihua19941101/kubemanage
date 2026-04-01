@@ -38,6 +38,12 @@ func NewTerminalSessionStore(ttl time.Duration) *TerminalSessionStore {
 	}
 }
 
+func (s *TerminalSessionStore) TTL() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.ttl
+}
+
 func (s *TerminalSessionStore) Create(podName, container, user, role string) TerminalSession {
 	s.mu.Lock()
 	defer s.mu.Unlock()

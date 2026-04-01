@@ -659,6 +659,7 @@ bash scripts/rebuild_qa.sh
 
 #### P402 验收标准（执行版）
 - 创建终端会话返回 `sessionId` 与可连接的 `wsPath`
+- 创建终端会话响应包含 `ttlSeconds` 与 `expiresAt`，便于前端提示会话时效
 - 同一 `sessionId` 仅允许消费一次，重复使用返回无效会话错误
 - 过期 `sessionId` 返回会话过期错误，且不会触发真实 `exec`
 - WebSocket 成功连通后可向容器发送输入并接收输出
