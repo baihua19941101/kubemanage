@@ -17,6 +17,9 @@ func requestWithRole(method, path string, body string, role string) *http.Reques
 	}
 	req.Header.Set("X-User-Role", role)
 	req.Header.Set("X-User", "tester")
+	if method != http.MethodGet {
+		req.Header.Set("X-Action-Confirm", "CONFIRM")
+	}
 	return req
 }
 
@@ -116,6 +119,21 @@ func TestSwitchCluster(t *testing.T) {
 	}
 }
 
+func TestSwitchClusterRequiresConfirmation(t *testing.T) {
+	r := NewRouter(nil, "mock", "")
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/clusters/switch", bytes.NewBufferString(`{"name":"staging-cluster"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-User-Role", "admin")
+	req.Header.Set("X-User", "tester")
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusPreconditionRequired {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusPreconditionRequired, w.Code, w.Body.String())
+	}
+}
+
 func TestNamespaces(t *testing.T) {
 	r := NewRouter(nil, "mock", "")
 
@@ -129,6 +147,7 @@ func TestNamespaces(t *testing.T) {
 	createReq, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces", bytes.NewBufferString(`{"name":"qa"}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createReq.Header.Set("X-User-Role", "admin")
+	createReq.Header.Set("X-Action-Confirm", "CONFIRM")
 	createW := httptest.NewRecorder()
 	r.ServeHTTP(createW, createReq)
 	if createW.Code != http.StatusCreated {
@@ -144,6 +163,7 @@ func TestNamespaces(t *testing.T) {
 
 	delReq, _ := http.NewRequest(http.MethodDelete, "/api/v1/namespaces/qa", nil)
 	delReq.Header.Set("X-User-Role", "admin")
+	delReq.Header.Set("X-Action-Confirm", "CONFIRM")
 	delW := httptest.NewRecorder()
 	r.ServeHTTP(delW, delReq)
 	if delW.Code != http.StatusNoContent {

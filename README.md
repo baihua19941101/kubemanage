@@ -62,6 +62,8 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - `KM_REDIS_DB`
 - `KM_K8S_ADAPTER_MODE`（建议仅使用 `live` / `auto`，当前研发目标为 real-only）
 - `KM_SECRET_KEY`（连接敏感字段加密密钥，留空则保持明文兼容模式）
+写操作确认头：`X-Action-Confirm: CONFIRM`（关键写操作必填）
+失败排查头：`X-Request-Id`（后端响应会回传）
 
 ```bash
 cd backend
@@ -646,7 +648,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第三阶段（P303 已完成，P304 待开始）`
-- 当前任务：`P304：真实写操作安全化（待开始）`
-- 当前状态：`P303 二次优化已完成：仅保留 test1 真实连接数据；真实连接管理页无 mock 展示且移除 Live 概览；集群列表已收敛为 Provider/Distro 与 Kubernetes Version/Architecture 组合字段`
-- 下一任务：`P304：真实写操作安全化（确认、失败回显、审计增强）`
+- 当前阶段：`第三阶段（P304 已完成，P305 待开始）`
+- 当前任务：`P305：真实日志与终端能力（待开始）`
+- 当前状态：`P304 已完成：关键写操作确认头校验、错误响应 requestId 回传、审计记录新增 requestId/namespace/error，并通过 p304 冒烟验证`
+- 下一任务：`P305：真实日志与终端能力（多容器、流式日志、exec/terminal）`

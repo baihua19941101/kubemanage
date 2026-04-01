@@ -14,6 +14,7 @@ import (
 func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(middleware.InjectRequestID())
 	adapterMode := normalizeK8sAdapterMode(k8sAdapterMode)
 
 	authSvc := service.NewAuthService()
@@ -100,34 +101,34 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 
 	write := api.Group("", middleware.WriteAudit(auditSvc))
 	{
-		write.POST("/clusters/switch", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), clusterHandler.SwitchCluster)
-		write.POST("/clusters/connections/import/kubeconfig", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.ImportKubeconfig)
-		write.POST("/clusters/connections/import/token", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.ImportToken)
+		write.POST("/clusters/switch", middleware.RequirePermission(authSvc, service.PermWorkloadWrite), middleware.RequireActionConfirm("switch_cluster"), clusterHandler.SwitchCluster)
+		write.POST("/clusters/connections/import/kubeconfig", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("import_cluster_kubeconfig"), clusterConnectionHandler.ImportKubeconfig)
+		write.POST("/clusters/connections/import/token", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("import_cluster_token"), clusterConnectionHandler.ImportToken)
 		write.POST("/clusters/connections/test", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.TestConnection)
-		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.Activate)
-		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), namespaceHandler.CreateNamespace)
-		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), namespaceHandler.DeleteNamespace)
+		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("activate_cluster_connection"), clusterConnectionHandler.Activate)
+		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), middleware.RequireActionConfirm("create_namespace"), namespaceHandler.CreateNamespace)
+		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), middleware.RequireActionConfirm("delete_namespace"), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.DeploymentNamespace(c.Param("name"))
-		}), workloadHandler.UpdateDeploymentYAML)
+		}), middleware.RequireActionConfirm("update_deployment_yaml"), workloadHandler.UpdateDeploymentYAML)
 		write.PUT("/pods/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.PodNamespace(c.Param("name"))
-		}), workloadHandler.UpdatePodYAML)
+		}), middleware.RequireActionConfirm("update_pod_yaml"), workloadHandler.UpdatePodYAML)
 		write.POST("/pods/:name/terminal/sessions", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.PodNamespace(c.Param("name"))
-		}), workloadHandler.CreateTerminalSession)
+		}), middleware.RequireActionConfirm("create_terminal_session"), workloadHandler.CreateTerminalSession)
 		write.PUT("/statefulsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.StatefulSetNamespace(c.Param("name"))
-		}), workloadHandler.UpdateStatefulSetYAML)
+		}), middleware.RequireActionConfirm("update_statefulset_yaml"), workloadHandler.UpdateStatefulSetYAML)
 		write.PUT("/daemonsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.DaemonSetNamespace(c.Param("name"))
-		}), workloadHandler.UpdateDaemonSetYAML)
+		}), middleware.RequireActionConfirm("update_daemonset_yaml"), workloadHandler.UpdateDaemonSetYAML)
 		write.PUT("/jobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.JobNamespace(c.Param("name"))
-		}), workloadHandler.UpdateJobYAML)
+		}), middleware.RequireActionConfirm("update_job_yaml"), workloadHandler.UpdateJobYAML)
 		write.PUT("/cronjobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.CronJobNamespace(c.Param("name"))
-		}), workloadHandler.UpdateCronJobYAML)
+		}), middleware.RequireActionConfirm("update_cronjob_yaml"), workloadHandler.UpdateCronJobYAML)
 	}
 
 	return r

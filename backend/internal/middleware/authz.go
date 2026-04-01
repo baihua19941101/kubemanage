@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
 	"kubeManage/backend/internal/service"
 
@@ -34,11 +33,7 @@ func RequirePermission(authSvc *service.AuthService, perm service.Permission) gi
 	return func(c *gin.Context) {
 		role := c.GetString(CtxRoleKey)
 		if !authSvc.HasPermission(role, perm) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "permission denied",
-				"role":  role,
-			})
-			c.Abort()
+			abortWithError(c, 403, "permission_denied", "permission denied", "role="+role)
 			return
 		}
 		c.Next()
@@ -53,27 +48,17 @@ func RequireScopedPermission(
 	return func(c *gin.Context) {
 		role := c.GetString(CtxRoleKey)
 		if !authSvc.HasPermission(role, perm) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "permission denied",
-				"role":  role,
-			})
-			c.Abort()
+			abortWithError(c, 403, "permission_denied", "permission denied", "role="+role)
 			return
 		}
 
 		namespace, err := namespaceResolver(c)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			c.Abort()
+			abortWithError(c, 404, "namespace_resolve_failed", err.Error(), "")
 			return
 		}
 		if !authSvc.CanAccessNamespace(role, namespace) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":     "namespace access denied",
-				"role":      role,
-				"namespace": namespace,
-			})
-			c.Abort()
+			abortWithError(c, 403, "namespace_access_denied", "namespace access denied", "role="+role+", namespace="+namespace)
 			return
 		}
 
