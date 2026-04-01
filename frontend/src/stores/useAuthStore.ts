@@ -4,6 +4,7 @@ import { getCurrentRole, setCurrentRole } from "../lib/api";
 type AuthState = {
   role: string;
   setRole: (role: string) => void;
+  canClusterManage: () => boolean;
   canNamespaceWrite: () => boolean;
   canWorkloadWrite: () => boolean;
   canAuditRead: () => boolean;
@@ -16,6 +17,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setCurrentRole(role);
     set({ role });
   },
+  canClusterManage: () => get().role === "admin",
   canNamespaceWrite: () => {
     const role = get().role;
     return role === "admin" || role === "operator";
