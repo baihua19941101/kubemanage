@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strings"
+
 	"kubeManage/backend/internal/handlers"
 	"kubeManage/backend/internal/infra"
 	"kubeManage/backend/internal/middleware"
@@ -9,9 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(store *infra.Store, k8sAdapterMode string) *gin.Engine {
+func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	adapterMode := normalizeK8sAdapterMode(k8sAdapterMode)
 
 	authSvc := service.NewAuthService()
 	auditSvc := service.NewAuditService()
@@ -24,8 +27,8 @@ func NewRouter(store *infra.Store, k8sAdapterMode string) *gin.Engine {
 	var clusterConnectionRepo service.ClusterConnectionRepository
 	var clusterConnectionAdapter service.K8sAdapter
 	if store != nil && store.DB != nil {
-		clusterConnectionRepo = service.NewGormClusterConnectionRepo(store.DB)
-		if k8sAdapterMode == "live" {
+		clusterConnectionRepo = service.NewGormClusterConnectionRepo(store.DB, secretKey)
+		if adapterMode == "live" || adapterMode == "auto" {
 			clusterConnectionAdapter = service.NewRealK8sAdapter()
 		}
 	}
@@ -126,4 +129,13 @@ func NewRouter(store *infra.Store, k8sAdapterMode string) *gin.Engine {
 	}
 
 	return r
+}
+
+func normalizeK8sAdapterMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "live", "auto":
+		return strings.ToLower(strings.TrimSpace(mode))
+	default:
+		return "mock"
+	}
 }
