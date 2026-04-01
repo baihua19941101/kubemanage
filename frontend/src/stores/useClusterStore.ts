@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiFetch } from "../lib/api";
+import { apiFetch, parseApiError } from "../lib/api";
 
 type Cluster = {
   state: string;
@@ -62,7 +62,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
     try {
       const resp = await apiFetch("/api/v1/clusters");
       if (!resp.ok) {
-        throw new Error("获取集群列表失败");
+        throw await parseApiError(resp, "获取集群列表失败");
       }
       const data = (await resp.json()) as { items: Cluster[]; current: string };
       set({ clusters: data.items, current: data.current });
@@ -76,7 +76,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
     try {
       const resp = await apiFetch("/api/v1/clusters/connections");
       if (!resp.ok) {
-        throw new Error("获取集群连接失败");
+        throw await parseApiError(resp, "获取集群连接失败");
       }
       const data = (await resp.json()) as { items: ClusterConnection[] };
       set({ connections: data.items });
@@ -95,8 +95,8 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
-      const body = await resp.json().catch(() => null) as { error?: string } | null;
-      set({ error: body?.error || "导入 kubeconfig 失败" });
+      const err = await parseApiError(resp, "导入 kubeconfig 失败");
+      set({ error: err.message });
       return false;
     }
     await get().loadConnections();
@@ -113,8 +113,8 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
-      const body = await resp.json().catch(() => null) as { error?: string } | null;
-      set({ error: body?.error || "导入 token 集群失败" });
+      const err = await parseApiError(resp, "导入 token 集群失败");
+      set({ error: err.message });
       return false;
     }
     await get().loadConnections();
@@ -127,8 +127,7 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       body: JSON.stringify(payload)
     });
     if (!resp.ok) {
-      const body = await resp.json().catch(() => null) as { error?: string } | null;
-      throw new Error(body?.error || "测试连接失败");
+      throw await parseApiError(resp, "测试连接失败");
     }
     return resp.json() as Promise<ConnectionTestResult>;
   },
@@ -141,8 +140,8 @@ export const useClusterStore = create<ClusterState>((set, get) => ({
       }
     });
     if (!resp.ok) {
-      const body = await resp.json().catch(() => null) as { error?: string } | null;
-      set({ error: body?.error || "激活真实集群失败" });
+      const err = await parseApiError(resp, "激活真实集群失败");
+      set({ error: err.message });
       return false;
     }
     await Promise.all([get().loadConnections(), get().load()]);

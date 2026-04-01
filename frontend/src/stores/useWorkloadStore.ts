@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiFetch } from "../lib/api";
+import { apiFetch, parseApiError } from "../lib/api";
 
 type Deployment = {
   name: string;
@@ -146,7 +146,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getDeploymentYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/deployments/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 Deployment YAML 失败");
+      throw await parseApiError(resp, "获取 Deployment YAML 失败");
     }
     return resp.text();
   },
@@ -164,7 +164,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getPodYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/pods/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 Pod YAML 失败");
+      throw await parseApiError(resp, "获取 Pod YAML 失败");
     }
     return resp.text();
   },
@@ -189,14 +189,14 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     const query = params.toString();
     const resp = await apiFetch(`/api/v1/pods/${name}/logs${query ? `?${query}` : ""}`);
     if (!resp.ok) {
-      throw new Error("获取 Pod 日志失败");
+      throw await parseApiError(resp, "获取 Pod 日志失败");
     }
     return resp.text();
   },
   getTerminalCapabilities: async (name: string) => {
     const resp = await apiFetch(`/api/v1/pods/${name}/terminal/capabilities`);
     if (!resp.ok) {
-      throw new Error("获取终端能力失败");
+      throw await parseApiError(resp, "获取终端能力失败");
     }
     return resp.json() as Promise<TerminalCapabilities>;
   },
@@ -211,12 +211,15 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
         container: container || ""
       })
     });
+    if (!resp.ok) {
+      throw await parseApiError(resp, "创建终端会话失败");
+    }
     return resp.json() as Promise<{ error: string; enabled: boolean }>;
   },
   getStatefulSetYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/statefulsets/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 StatefulSet YAML 失败");
+      throw await parseApiError(resp, "获取 StatefulSet YAML 失败");
     }
     return resp.text();
   },
@@ -234,7 +237,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getDaemonSetYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/daemonsets/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 DaemonSet YAML 失败");
+      throw await parseApiError(resp, "获取 DaemonSet YAML 失败");
     }
     return resp.text();
   },
@@ -252,7 +255,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getJobYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/jobs/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 Job YAML 失败");
+      throw await parseApiError(resp, "获取 Job YAML 失败");
     }
     return resp.text();
   },
@@ -270,7 +273,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
   getCronJobYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/cronjobs/${name}/yaml`);
     if (!resp.ok) {
-      throw new Error("获取 CronJob YAML 失败");
+      throw await parseApiError(resp, "获取 CronJob YAML 失败");
     }
     return resp.text();
   },
