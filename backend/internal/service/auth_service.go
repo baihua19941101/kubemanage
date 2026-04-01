@@ -46,6 +46,8 @@ var (
 	ErrPasswordTooShort      = errors.New("password is too short (min 6)")
 	ErrUsernameInvalid       = errors.New("username must be 3-64 chars and contain letters, digits, _ or -")
 	ErrReadonlyScopeRequired = errors.New("readonly requires at least one allowed namespace")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrAdminDisableForbidden = errors.New("admin user cannot be disabled")
 )
 
 type AuthIdentity struct {
@@ -62,6 +64,16 @@ type AuthTokenPair struct {
 	User         string   `json:"user"`
 	Role         string   `json:"role"`
 	Namespaces   []string `json:"allowedNamespaces"`
+}
+
+type UserInfo struct {
+	ID                uint      `json:"id"`
+	Username          string    `json:"username"`
+	Role              string    `json:"role"`
+	AllowedNamespaces []string  `json:"allowedNamespaces"`
+	IsActive          bool      `json:"isActive"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
 type AuthService struct {
@@ -319,6 +331,71 @@ func (s *AuthService) CreateUser(ctx context.Context, username, password, role s
 		return err
 	}
 	return nil
+}
+
+func (s *AuthService) ListUsers(ctx context.Context) ([]UserInfo, error) {
+	if s.db == nil {
+		return nil, ErrAuthDBNotEnabled
+	}
+	var records []infra.UserRecord
+	if err := s.db.WithContext(ctx).Order("id asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	items := make([]UserInfo, 0, len(records))
+	for _, item := range records {
+		items = append(items, UserInfo{
+			ID:                item.ID,
+			Username:          item.Username,
+			Role:              s.NormalizeRole(item.Role),
+			AllowedNamespaces: normalizeAllowedNamespaces(strings.Split(item.AllowedNamespaces, ",")),
+			IsActive:          item.IsActive,
+			CreatedAt:         item.CreatedAt,
+			UpdatedAt:         item.UpdatedAt,
+		})
+	}
+	return items, nil
+}
+
+func (s *AuthService) SetUserActive(ctx context.Context, username string, active bool) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	username = strings.TrimSpace(username)
+	var record infra.UserRecord
+	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+	if strings.EqualFold(record.Username, "admin") && !active {
+		return ErrAdminDisableForbidden
+	}
+	record.IsActive = active
+	return s.db.WithContext(ctx).Save(&record).Error
+}
+
+func (s *AuthService) ResetUserPassword(ctx context.Context, username, newPassword string) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	if len(newPassword) < 6 {
+		return ErrPasswordTooShort
+	}
+	username = strings.TrimSpace(username)
+	var record infra.UserRecord
+	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	record.PasswordHash = string(hash)
+	return s.db.WithContext(ctx).Save(&record).Error
 }
 
 func (s *AuthService) ParseAccessToken(accessToken string) (*AuthIdentity, error) {

@@ -31,6 +31,14 @@ type createUserRequest struct {
 	AllowedNamespaces []string `json:"allowedNamespaces"`
 }
 
+type updateUserStatusRequest struct {
+	IsActive bool `json:"isActive"`
+}
+
+type resetPasswordRequest struct {
+	Password string `json:"password"`
+}
+
 func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 	return &AuthHandler{authSvc: authSvc}
 }
@@ -125,6 +133,65 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
+func (h *AuthHandler) ListUsers(c *gin.Context) {
+	items, err := h.authSvc.ListUsers(c.Request.Context())
+	if err != nil {
+		if err == service.ErrAuthDBNotEnabled {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *AuthHandler) UpdateUserStatus(c *gin.Context) {
+	username := c.Param("username")
+	var req updateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := h.authSvc.SetUserActive(c.Request.Context(), username, req.IsActive); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case service.ErrAdminDisableForbidden:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) ResetUserPassword(c *gin.Context) {
+	username := c.Param("username")
+	var req resetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := h.authSvc.ResetUserPassword(c.Request.Context(), username, req.Password); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case service.ErrPasswordTooShort:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h *AuthHandler) GetMe(c *gin.Context) {
 	role := c.GetString(middleware.CtxRoleKey)
 	perms := h.authSvc.Permissions(role)
@@ -146,4 +213,3 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		"allowedNamespaces": allowedNamespaces,
 	})
 }
-

@@ -275,6 +275,33 @@ curl -X POST http://localhost:8080/api/v1/auth/users \
   -d '{"username":"readonly1","password":"123456","role":"readonly","allowedNamespaces":["dev"]}'
 ```
 
+管理员查看用户列表：
+
+```bash
+curl -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  http://localhost:8080/api/v1/auth/users
+```
+
+管理员禁用用户：
+
+```bash
+curl -X PATCH http://localhost:8080/api/v1/auth/users/readonly1/status \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM" \
+  -H "Content-Type: application/json" \
+  -d '{"isActive":false}'
+```
+
+管理员重置用户密码：
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/users/readonly1/reset-password \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Action-Confirm: CONFIRM" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"654321"}'
+```
+
 以 viewer 角色尝试删除名称空间（应返回 403）：
 
 ```bash
@@ -304,6 +331,12 @@ BASE_URL=http://127.0.0.1:8080 bash scripts/mvp_smoke_test.sh
 
 ```bash
 bash scripts/rebuild_qa.sh
+```
+
+P601 用户管理冒烟脚本：
+
+```bash
+bash scripts/p601_user_management_smoke_test.sh
 ```
 
 ## 开发原则
@@ -762,6 +795,30 @@ bash scripts/rebuild_qa.sh
 - 后端 `go test ./...`、前端 `npm run build`、认证冒烟脚本通过
 - 提供 `scripts/p501_auth_smoke_test.sh` 认证冒烟脚本
 
+### P601 计划（2026-04-01）
+
+#### 功能需求（当前会话确认）
+- 管理员用户管理增强：用户列表查询、用户启停、密码重置
+- 前端安全域页面同时提供用户管理与审计筛选能力
+
+#### 设计要点
+- 后端接口已落地：
+  - `GET /api/v1/auth/users`
+  - `PATCH /api/v1/auth/users/:username/status`
+  - `POST /api/v1/auth/users/:username/reset-password`
+- 关键写操作继续沿用 `X-Action-Confirm: CONFIRM` 与 `PermUserManage` 权限校验
+- 前端 `AuthAuditPage` 已升级为“用户管理 + 审计日志”双区块页面
+- 新增 `scripts/p601_user_management_smoke_test.sh`，覆盖用户创建、启停、重置密码与权限拒绝场景
+
+#### 任务计划（执行结果）
+1. 后端用户管理接口联调（已完成）
+2. 前端用户管理页面改造（已完成）
+3. 回归与冒烟验证（已完成）
+
+#### 阶段状态
+- 当前处于 `P601 已完成`
+- 验证结果：`go test ./...`、`npm run build`、`scripts/p601_user_management_smoke_test.sh` 全部通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -772,7 +829,7 @@ bash scripts/rebuild_qa.sh
 
 ## 任务状态
 
-- 当前阶段：`第五阶段（P501 已完成）`
-- 当前任务：`P501：账号认证与用户体系（已完成）`
-- 当前状态：`已完成默认 admin 初始化、登录/刷新/登出、管理员创建用户、Bearer 优先鉴权、前端登录页与认证冒烟`
-- 下一任务：`第六阶段规划（OAuth/LDAP 与更细粒度授权）`
+- 当前阶段：`第六阶段（P601 已完成）`
+- 当前任务：`P601：用户管理增强（已完成）`
+- 当前状态：`已交付用户列表、用户启停、密码重置、前端用户管理页面与 P601 冒烟脚本`
+- 下一任务：`第七阶段规划（OAuth/LDAP 与更细粒度授权）`

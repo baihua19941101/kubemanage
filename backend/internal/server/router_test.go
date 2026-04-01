@@ -425,6 +425,45 @@ func TestRBACAndAudit(t *testing.T) {
 	}
 }
 
+func TestAuthUserManagement(t *testing.T) {
+	r := NewRouter(nil, "mock", "")
+
+	createReq := requestWithRole(http.MethodPost, "/api/v1/auth/users", `{"username":"p601-user","password":"123456","role":"readonly","allowedNamespaces":["dev"]}`, "admin")
+	createW := httptest.NewRecorder()
+	r.ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("admin create user should return 503 when auth db disabled: %d body=%s", createW.Code, createW.Body.String())
+	}
+
+	listReq := requestWithRole(http.MethodGet, "/api/v1/auth/users", "", "admin")
+	listW := httptest.NewRecorder()
+	r.ServeHTTP(listW, listReq)
+	if listW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("admin list users should return 503 when auth db disabled: %d body=%s", listW.Code, listW.Body.String())
+	}
+
+	viewerListReq := requestWithRole(http.MethodGet, "/api/v1/auth/users", "", "viewer")
+	viewerListW := httptest.NewRecorder()
+	r.ServeHTTP(viewerListW, viewerListReq)
+	if viewerListW.Code != http.StatusForbidden {
+		t.Fatalf("viewer list users should be forbidden: %d body=%s", viewerListW.Code, viewerListW.Body.String())
+	}
+
+	disableReq := requestWithRole(http.MethodPatch, "/api/v1/auth/users/p601-user/status", `{"isActive":false}`, "admin")
+	disableW := httptest.NewRecorder()
+	r.ServeHTTP(disableW, disableReq)
+	if disableW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("update user status should return 503 when auth db disabled: %d body=%s", disableW.Code, disableW.Body.String())
+	}
+
+	resetReq := requestWithRole(http.MethodPost, "/api/v1/auth/users/p601-user/reset-password", `{"password":"654321"}`, "admin")
+	resetW := httptest.NewRecorder()
+	r.ServeHTTP(resetW, resetReq)
+	if resetW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("reset user password should return 503 when auth db disabled: %d body=%s", resetW.Code, resetW.Body.String())
+	}
+}
+
 func TestParseTerminalSessionTTL(t *testing.T) {
 	t.Setenv("KM_TERMINAL_SESSION_TTL_SECONDS", "")
 	if got := parseTerminalSessionTTL(); got != 120*time.Second {
