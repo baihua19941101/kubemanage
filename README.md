@@ -389,6 +389,8 @@ bash scripts/rebuild_qa.sh
 - 导航：按域分组（Cluster / Workloads / Service Discovery / Storage / Security / Audit）
 - 页面容器：统一 `PageHeader + Toolbar + TableArea + DetailPanel`
 - 状态：路由状态统一由 `react-router` 管理，业务状态保持 `Zustand`
+- Workloads 导航采用可展开子菜单：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
+- Workloads 路由拆分为子路由：`/workloads/deployments|pods|statefulsets|daemonsets|jobs|cronjobs`
 
 ## 任务计划
 
@@ -443,5 +445,5 @@ bash scripts/rebuild_qa.sh
 
 - 当前阶段：`第二阶段（功能扩展进行中）`
 - 当前任务：`P202：工作负载扩展（已完成）`
-- 当前状态：`4 类工作负载已支持列表/详情/YAML 读写，联调回归通过`
+- 当前状态：`Workloads 已改为左侧下拉子菜单导航，支持按资源子路由访问与编辑`
 - 下一任务：`P203：服务发现扩展（Ingress/HPA）`

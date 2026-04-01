@@ -7,7 +7,12 @@ import YamlDialog from "../components/framework/YamlDialog";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useWorkloadStore } from "../stores/useWorkloadStore";
 
-type Mode = "deployments" | "pods" | "statefulsets" | "daemonsets" | "jobs" | "cronjobs";
+export type WorkloadMode = "deployments" | "pods" | "statefulsets" | "daemonsets" | "jobs" | "cronjobs";
+
+type Props = {
+  initialMode?: WorkloadMode;
+  showModeSwitcher?: boolean;
+};
 
 type DeploymentRow = {
   name: string;
@@ -66,7 +71,7 @@ type CronJobRow = {
   age: string;
 };
 
-export default function WorkloadPage() {
+export default function WorkloadPage({ initialMode = "deployments", showModeSwitcher = true }: Props) {
   const deployments = useWorkloadStore((s) => s.deployments);
   const pods = useWorkloadStore((s) => s.pods);
   const statefulSets = useWorkloadStore((s) => s.statefulSets);
@@ -93,7 +98,7 @@ export default function WorkloadPage() {
 
   const canWorkloadWrite = useAuthStore((s) => s.canWorkloadWrite);
 
-  const [mode, setMode] = useState<Mode>("deployments");
+  const [mode, setMode] = useState<WorkloadMode>(initialMode);
   const [keyword, setKeyword] = useState("");
   const [selectedName, setSelectedName] = useState("");
   const [yamlOpen, setYamlOpen] = useState(false);
@@ -104,6 +109,11 @@ export default function WorkloadPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setMode(initialMode);
+    setSelectedName("");
+  }, [initialMode]);
 
   const lowerKeyword = keyword.toLowerCase().trim();
 
@@ -245,7 +255,7 @@ export default function WorkloadPage() {
       <PageScaffold
         title="工作负载管理"
         description="统一管理 Deployment/Pod/StatefulSet/DaemonSet/Job/CronJob，支持 YAML 编辑与日志查看"
-        actions={
+        actions={showModeSwitcher ? (
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
             <Button variant={mode === "deployments" ? "contained" : "outlined"} onClick={() => setMode("deployments")}>Deployment</Button>
             <Button variant={mode === "pods" ? "contained" : "outlined"} onClick={() => setMode("pods")}>Pod</Button>
@@ -254,7 +264,7 @@ export default function WorkloadPage() {
             <Button variant={mode === "jobs" ? "contained" : "outlined"} onClick={() => setMode("jobs")}>Job</Button>
             <Button variant={mode === "cronjobs" ? "contained" : "outlined"} onClick={() => setMode("cronjobs")}>CronJob</Button>
           </Stack>
-        }
+        ) : null}
         toolbar={
           <TextField
             size="small"

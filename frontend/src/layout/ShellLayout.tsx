@@ -3,6 +3,7 @@ import {
   Avatar,
   Box,
   Breadcrumbs,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -21,41 +22,100 @@ import ClusterIcon from "@mui/icons-material/Hub";
 import WorkloadIcon from "@mui/icons-material/ViewQuilt";
 import ConfigIcon from "@mui/icons-material/Tune";
 import SecurityIcon from "@mui/icons-material/Security";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 const drawerWidth = 256;
 
-type NavItem = {
+type NavLeaf = {
   group: string;
   label: string;
   path: string;
-  icon: ReactNode;
+  icon?: ReactNode;
+  parentLabel?: string;
 };
 
+type NavSection = {
+  group: string;
+  label: string;
+  icon: ReactNode;
+  children: NavLeaf[];
+};
+
+type NavItem =
+  | { type: "link"; item: NavLeaf; icon: ReactNode }
+  | { type: "section"; section: NavSection };
+
 const navItems: NavItem[] = [
-  { group: "Cluster", label: "集群管理", path: "/cluster", icon: <ClusterIcon fontSize="small" /> },
-  { group: "Workloads", label: "工作负载", path: "/workloads", icon: <WorkloadIcon fontSize="small" /> },
-  { group: "Configuration", label: "名称空间", path: "/namespaces", icon: <ConfigIcon fontSize="small" /> },
-  { group: "Configuration", label: "服务与配置", path: "/resources", icon: <ConfigIcon fontSize="small" /> },
-  { group: "Security", label: "权限与审计", path: "/auth-audit", icon: <SecurityIcon fontSize="small" /> }
+  {
+    type: "link",
+    icon: <ClusterIcon fontSize="small" />,
+    item: { group: "Cluster", label: "集群管理", path: "/cluster" }
+  },
+  {
+    type: "section",
+    section: {
+      group: "Workloads",
+      label: "工作负载",
+      icon: <WorkloadIcon fontSize="small" />,
+      children: [
+        { group: "Workloads", label: "Deployment", path: "/workloads/deployments", parentLabel: "工作负载" },
+        { group: "Workloads", label: "Pod", path: "/workloads/pods", parentLabel: "工作负载" },
+        { group: "Workloads", label: "StatefulSet", path: "/workloads/statefulsets", parentLabel: "工作负载" },
+        { group: "Workloads", label: "DaemonSet", path: "/workloads/daemonsets", parentLabel: "工作负载" },
+        { group: "Workloads", label: "Job", path: "/workloads/jobs", parentLabel: "工作负载" },
+        { group: "Workloads", label: "CronJob", path: "/workloads/cronjobs", parentLabel: "工作负载" }
+      ]
+    }
+  },
+  {
+    type: "link",
+    icon: <ConfigIcon fontSize="small" />,
+    item: { group: "Configuration", label: "名称空间", path: "/namespaces" }
+  },
+  {
+    type: "link",
+    icon: <ConfigIcon fontSize="small" />,
+    item: { group: "Configuration", label: "服务与配置", path: "/resources" }
+  },
+  {
+    type: "link",
+    icon: <SecurityIcon fontSize="small" />,
+    item: { group: "Security", label: "权限与审计", path: "/auth-audit" }
+  }
 ];
 
 export default function ShellLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [workloadsOpen, setWorkloadsOpen] = useState(true);
   const location = useLocation();
 
-  const current = navItems.find((n) => n.path === location.pathname);
+  const allLeaves = useMemo(() => {
+    const leaves: NavLeaf[] = [];
+    for (const item of navItems) {
+      if (item.type === "link") {
+        leaves.push(item.item);
+      } else {
+        leaves.push(...item.section.children);
+      }
+    }
+    return leaves;
+  }, []);
+
+  const current = allLeaves.find((leaf) => leaf.path === location.pathname);
 
   const grouped = useMemo(() => {
     const map = new Map<string, NavItem[]>();
     for (const item of navItems) {
-      if (!map.has(item.group)) {
-        map.set(item.group, []);
+      const group = item.type === "link" ? item.item.group : item.section.group;
+      if (!map.has(group)) {
+        map.set(group, []);
       }
-      map.get(item.group)!.push(item);
+      map.get(group)!.push(item);
     }
     return Array.from(map.entries());
   }, []);
@@ -80,29 +140,82 @@ export default function ShellLayout() {
             >
               {group}
             </Typography>
-            {items.map((item) => {
-              const active = location.pathname === item.path;
+            {items.map((entry, index) => {
+              if (entry.type === "link") {
+                const active = location.pathname === entry.item.path;
+                return (
+                  <ListItemButton
+                    key={entry.item.path}
+                    component={NavLink}
+                    to={entry.item.path}
+                    selected={active}
+                    sx={{
+                      borderRadius: 1.5,
+                      mx: 0.5,
+                      my: 0.2,
+                      bgcolor: active ? "#dce9fb" : "transparent",
+                      color: active ? "#0b3b75" : "inherit",
+                      "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                    }}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+                      {entry.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={entry.item.label} />
+                  </ListItemButton>
+                );
+              }
+
+              const sectionActive = entry.section.children.some((child) => child.path === location.pathname);
               return (
-                <ListItemButton
-                  key={item.path}
-                  component={NavLink}
-                  to={item.path}
-                  selected={active}
-                  sx={{
-                    borderRadius: 1.5,
-                    mx: 0.5,
-                    my: 0.2,
-                    bgcolor: active ? "#dce9fb" : "transparent",
-                    color: active ? "#0b3b75" : "inherit",
-                    "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
-                  }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
+                <Box key={`${entry.section.group}-${index}`}>
+                  <ListItemButton
+                    selected={sectionActive}
+                    onClick={() => setWorkloadsOpen((prev) => !prev)}
+                    sx={{
+                      borderRadius: 1.5,
+                      mx: 0.5,
+                      my: 0.2,
+                      bgcolor: sectionActive ? "#dce9fb" : "transparent",
+                      color: sectionActive ? "#0b3b75" : "inherit",
+                      "&:hover": { bgcolor: sectionActive ? "#dce9fb" : "#eaf1fb" }
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>
+                      {entry.section.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={entry.section.label} />
+                    {workloadsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                  </ListItemButton>
+                  <Collapse in={workloadsOpen} timeout="auto" unmountOnExit>
+                    <List disablePadding sx={{ pl: 1.5 }}>
+                      {entry.section.children.map((child) => {
+                        const active = location.pathname === child.path;
+                        return (
+                          <ListItemButton
+                            key={child.path}
+                            component={NavLink}
+                            to={child.path}
+                            selected={active}
+                            sx={{
+                              borderRadius: 1.5,
+                              mx: 0.5,
+                              my: 0.1,
+                              pl: 4,
+                              bgcolor: active ? "#dce9fb" : "transparent",
+                              color: active ? "#0b3b75" : "inherit",
+                              "&:hover": { bgcolor: active ? "#dce9fb" : "#eaf1fb" }
+                            }}
+                            onClick={() => setMobileOpen(false)}
+                          >
+                            <ListItemText primary={child.label} primaryTypographyProps={{ variant: "body2" }} />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                  </Collapse>
+                </Box>
               );
             })}
           </Box>
@@ -146,6 +259,11 @@ export default function ShellLayout() {
               <Typography variant="caption" color="text.primary">
                 {current?.group || "General"}
               </Typography>
+              {current?.parentLabel && (
+                <Typography variant="caption" color="text.primary">
+                  {current.parentLabel}
+                </Typography>
+              )}
               <Typography variant="caption" color="text.primary">
                 {current?.label || "Overview"}
               </Typography>
