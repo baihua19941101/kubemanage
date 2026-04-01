@@ -61,6 +61,12 @@ func NewRouter(store *infra.Store) *gin.Engine {
 		api.GET("/configmaps/:name", resourceHandler.GetConfigMap)
 		api.GET("/secrets", resourceHandler.ListSecrets)
 		api.GET("/secrets/:name", resourceHandler.GetSecret)
+		api.GET("/ingresses", resourceHandler.ListIngresses)
+		api.GET("/ingresses/:name", resourceHandler.GetIngress)
+		api.GET("/ingresses/:name/services", resourceHandler.ListIngressServices)
+		api.GET("/hpas", resourceHandler.ListHPAs)
+		api.GET("/hpas/:name", resourceHandler.GetHPA)
+		api.GET("/hpas/:name/target", resourceHandler.GetHPATarget)
 		api.GET("/auth/me", authHandler.GetMe)
 		api.GET("/audits", middleware.RequirePermission(authSvc, service.PermAuditRead), auditHandler.ListAudits)
 	}

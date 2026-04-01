@@ -188,6 +188,30 @@ Service 列表：
 curl http://localhost:8080/api/v1/services
 ```
 
+Ingress 列表：
+
+```bash
+curl http://localhost:8080/api/v1/ingresses
+```
+
+Ingress 关联 Service：
+
+```bash
+curl http://localhost:8080/api/v1/ingresses/web-api-ing/services
+```
+
+HPA 列表：
+
+```bash
+curl http://localhost:8080/api/v1/hpas
+```
+
+HPA 目标查询：
+
+```bash
+curl http://localhost:8080/api/v1/hpas/web-api-hpa/target
+```
+
 ConfigMap 列表：
 
 ```bash
@@ -445,6 +469,6 @@ bash scripts/rebuild_qa.sh
 ## 任务状态
 
 - 当前阶段：`第二阶段（功能扩展进行中）`
-- 当前任务：`P202：工作负载扩展（已完成）`
-- 当前状态：`导航已调整为两级菜单，一级点击展开二级资源菜单（不再三级）`
-- 下一任务：`P203：服务发现扩展（Ingress/HPA）`
+- 当前任务：`P203：服务发现扩展（已完成）`
+- 当前状态：`Ingress/HPA 已支持列表/详情与关联查询，联调验证通过`
+- 下一任务：`P204：存储管理扩展（PV/PVC/StorageClass）`

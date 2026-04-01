@@ -54,3 +54,47 @@ func (h *ResourceHandler) GetSecret(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, item)
 }
+
+func (h *ResourceHandler) ListIngresses(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListIngresses()})
+}
+
+func (h *ResourceHandler) GetIngress(c *gin.Context) {
+	item, ok := h.resourceSvc.GetIngress(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ingress not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) ListHPAs(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListHPAs()})
+}
+
+func (h *ResourceHandler) GetHPA(c *gin.Context) {
+	item, ok := h.resourceSvc.GetHPA(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "hpa not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) ListIngressServices(c *gin.Context) {
+	items, ok := h.resourceSvc.ListIngressServices(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ingress not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *ResourceHandler) GetHPATarget(c *gin.Context) {
+	item, ok := h.resourceSvc.GetHPATarget(c.Param("name"))
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "hpa not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
