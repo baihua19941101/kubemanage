@@ -49,6 +49,11 @@ var (
 	ErrUserNotFound          = errors.New("user not found")
 	ErrAdminDisableForbidden = errors.New("admin user cannot be disabled")
 	ErrAdminRoleChangeDenied = errors.New("admin user role cannot be changed")
+	ErrAuthProviderNotFound  = errors.New("auth provider not found")
+	ErrAuthProviderDisabled  = errors.New("auth provider is disabled")
+	ErrAuthProviderType      = errors.New("auth provider type not supported")
+	ErrAuthProviderName      = errors.New("auth provider name is required")
+	ErrLDAPNotImplemented    = errors.New("ldap auth is not implemented yet")
 )
 
 type AuthIdentity struct {
@@ -75,6 +80,23 @@ type UserInfo struct {
 	IsActive          bool      `json:"isActive"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
+}
+
+type AuthProviderInfo struct {
+	ID        uint              `json:"id"`
+	Name      string            `json:"name"`
+	Type      string            `json:"type"`
+	IsEnabled bool              `json:"isEnabled"`
+	IsDefault bool              `json:"isDefault"`
+	Config    map[string]string `json:"config"`
+	CreatedAt time.Time         `json:"createdAt"`
+	UpdatedAt time.Time         `json:"updatedAt"`
+}
+
+type PublicAuthProvider struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	IsDefault bool   `json:"isDefault"`
 }
 
 type AuthService struct {
@@ -156,6 +178,38 @@ func (s *AuthService) EnsureDefaultAdmin(ctx context.Context) error {
 	}).Error
 }
 
+func (s *AuthService) EnsureDefaultProviders(ctx context.Context) error {
+	if s.db == nil {
+		return nil
+	}
+	var localCount int64
+	if err := s.db.WithContext(ctx).Model(&infra.AuthProviderRecord{}).Where("name = ?", "local").Count(&localCount).Error; err != nil {
+		return err
+	}
+	if localCount == 0 {
+		if err := s.db.WithContext(ctx).Create(&infra.AuthProviderRecord{
+			Name:      "local",
+			Type:      "local",
+			IsEnabled: true,
+			IsDefault: true,
+			Config:    "{}",
+		}).Error; err != nil {
+			return err
+		}
+	}
+	var defaultCount int64
+	if err := s.db.WithContext(ctx).Model(&infra.AuthProviderRecord{}).Where("is_default = ?", true).Count(&defaultCount).Error; err != nil {
+		return err
+	}
+	if defaultCount == 0 {
+		return s.db.WithContext(ctx).
+			Model(&infra.AuthProviderRecord{}).
+			Where("name = ?", "local").
+			Updates(map[string]any{"is_default": true, "updated_at": time.Now()}).Error
+	}
+	return nil
+}
+
 func (s *AuthService) NormalizeRole(role string) string {
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case RoleAdmin:
@@ -215,9 +269,19 @@ func canAccessWithAllowedNamespaces(allowed []string, namespace string) bool {
 	return false
 }
 
-func (s *AuthService) Login(ctx context.Context, username, password string) (AuthTokenPair, error) {
+func (s *AuthService) Login(ctx context.Context, username, password, provider string) (AuthTokenPair, error) {
 	if s.db == nil {
 		return AuthTokenPair{}, ErrAuthDBNotEnabled
+	}
+	providerType, err := s.resolveProviderType(ctx, provider)
+	if err != nil {
+		return AuthTokenPair{}, err
+	}
+	if providerType == "ldap" {
+		return AuthTokenPair{}, ErrLDAPNotImplemented
+	}
+	if providerType != "local" {
+		return AuthTokenPair{}, ErrAuthProviderType
 	}
 	var user infra.UserRecord
 	if err := s.db.WithContext(ctx).Where("username = ?", strings.TrimSpace(username)).First(&user).Error; err != nil {
@@ -437,6 +501,117 @@ func (s *AuthService) UpdateUserRoleAndNamespaces(ctx context.Context, username,
 	return s.db.WithContext(ctx).Save(&record).Error
 }
 
+func (s *AuthService) ListAuthProviders(ctx context.Context) ([]AuthProviderInfo, error) {
+	if s.db == nil {
+		return nil, ErrAuthDBNotEnabled
+	}
+	var records []infra.AuthProviderRecord
+	if err := s.db.WithContext(ctx).Order("id asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	items := make([]AuthProviderInfo, 0, len(records))
+	for _, record := range records {
+		items = append(items, AuthProviderInfo{
+			ID:        record.ID,
+			Name:      record.Name,
+			Type:      record.Type,
+			IsEnabled: record.IsEnabled,
+			IsDefault: record.IsDefault,
+			Config:    decodeProviderConfig(record.Config),
+			CreatedAt: record.CreatedAt,
+			UpdatedAt: record.UpdatedAt,
+		})
+	}
+	return items, nil
+}
+
+func (s *AuthService) ListPublicAuthProviders(ctx context.Context) ([]PublicAuthProvider, error) {
+	if s.db == nil {
+		return []PublicAuthProvider{{Name: "local", Type: "local", IsDefault: true}}, nil
+	}
+	var records []infra.AuthProviderRecord
+	if err := s.db.WithContext(ctx).Where("is_enabled = ?", true).Order("id asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	items := make([]PublicAuthProvider, 0, len(records))
+	for _, record := range records {
+		items = append(items, PublicAuthProvider{
+			Name:      record.Name,
+			Type:      record.Type,
+			IsDefault: record.IsDefault,
+		})
+	}
+	if len(items) == 0 {
+		items = append(items, PublicAuthProvider{Name: "local", Type: "local", IsDefault: true})
+	}
+	return items, nil
+}
+
+func (s *AuthService) CreateAuthProvider(ctx context.Context, name, providerType string, config map[string]string) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ErrAuthProviderName
+	}
+	providerType = normalizeProviderType(providerType)
+	if providerType != "local" && providerType != "ldap" {
+		return ErrAuthProviderType
+	}
+	record := infra.AuthProviderRecord{
+		Name:      name,
+		Type:      providerType,
+		IsEnabled: true,
+		IsDefault: false,
+		Config:    encodeProviderConfig(config),
+	}
+	if err := s.db.WithContext(ctx).Create(&record).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
+			return fmt.Errorf("auth provider already exists")
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *AuthService) SetAuthProviderEnabled(ctx context.Context, id uint, enabled bool) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	var record infra.AuthProviderRecord
+	if err := s.db.WithContext(ctx).First(&record, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrAuthProviderNotFound
+		}
+		return err
+	}
+	record.IsEnabled = enabled
+	return s.db.WithContext(ctx).Save(&record).Error
+}
+
+func (s *AuthService) SetDefaultAuthProvider(ctx context.Context, id uint) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var record infra.AuthProviderRecord
+		if err := tx.First(&record, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrAuthProviderNotFound
+			}
+			return err
+		}
+		if !record.IsEnabled {
+			return ErrAuthProviderDisabled
+		}
+		if err := tx.Model(&infra.AuthProviderRecord{}).Where("is_default = ?", true).Updates(map[string]any{"is_default": false, "updated_at": time.Now()}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&infra.AuthProviderRecord{}).Where("id = ?", id).Updates(map[string]any{"is_default": true, "updated_at": time.Now()}).Error
+	})
+}
+
 func (s *AuthService) ParseAccessToken(accessToken string) (*AuthIdentity, error) {
 	claims, err := s.parseToken(accessToken, "access")
 	if err != nil {
@@ -564,5 +739,80 @@ func normalizeAllowedNamespaces(items []string) []string {
 	}
 	slices.Sort(out)
 	out = slices.Compact(out)
+	return out
+}
+
+func normalizeProviderType(providerType string) string {
+	return strings.ToLower(strings.TrimSpace(providerType))
+}
+
+func (s *AuthService) resolveProviderType(ctx context.Context, provider string) (string, error) {
+	p := strings.TrimSpace(provider)
+	if p == "" {
+		var defaultRecord infra.AuthProviderRecord
+		if err := s.db.WithContext(ctx).Where("is_default = ?", true).First(&defaultRecord).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "local", nil
+			}
+			return "", err
+		}
+		if !defaultRecord.IsEnabled {
+			return "", ErrAuthProviderDisabled
+		}
+		return normalizeProviderType(defaultRecord.Type), nil
+	}
+
+	var record infra.AuthProviderRecord
+	if err := s.db.WithContext(ctx).Where("name = ?", p).First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", ErrAuthProviderNotFound
+		}
+		return "", err
+	}
+	if !record.IsEnabled {
+		return "", ErrAuthProviderDisabled
+	}
+	return normalizeProviderType(record.Type), nil
+}
+
+func encodeProviderConfig(cfg map[string]string) string {
+	if len(cfg) == 0 {
+		return "{}"
+	}
+	parts := make([]string, 0, len(cfg))
+	for k, v := range cfg {
+		k = strings.TrimSpace(k)
+		if k == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s", k, strings.TrimSpace(v)))
+	}
+	slices.Sort(parts)
+	return strings.Join(parts, ";")
+}
+
+func decodeProviderConfig(raw string) map[string]string {
+	out := map[string]string{}
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "{}" {
+		return out
+	}
+	items := strings.Split(raw, ";")
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		pair := strings.SplitN(item, "=", 2)
+		if len(pair) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(pair[0])
+		value := strings.TrimSpace(pair[1])
+		if key == "" {
+			continue
+		}
+		out[key] = value
+	}
 	return out
 }

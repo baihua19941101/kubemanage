@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"kubeManage/backend/internal/middleware"
@@ -18,6 +19,7 @@ type AuthHandler struct {
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Provider string `json:"provider"`
 }
 
 type refreshRequest struct {
@@ -44,6 +46,16 @@ type updateUserProfileRequest struct {
 	AllowedNamespaces []string `json:"allowedNamespaces"`
 }
 
+type createAuthProviderRequest struct {
+	Name   string            `json:"name"`
+	Type   string            `json:"type"`
+	Config map[string]string `json:"config"`
+}
+
+type updateAuthProviderStatusRequest struct {
+	IsEnabled bool `json:"isEnabled"`
+}
+
 func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 	return &AuthHandler{authSvc: authSvc}
 }
@@ -54,7 +66,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	pair, err := h.authSvc.Login(c.Request.Context(), req.Username, req.Password)
+	pair, err := h.authSvc.Login(c.Request.Context(), req.Username, req.Password, req.Provider)
 	if err != nil {
 		switch err {
 		case service.ErrAuthDBNotEnabled:
@@ -63,6 +75,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		case service.ErrUserDisabled:
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderDisabled:
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		case service.ErrLDAPNotImplemented:
+			c.JSON(http.StatusNotImplemented, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
@@ -211,6 +229,99 @@ func (h *AuthHandler) UpdateUserProfile(c *gin.Context) {
 		case service.ErrUserNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		case service.ErrRoleNotAllowed, service.ErrReadonlyScopeRequired, service.ErrAdminRoleChangeDenied:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) ListAuthProviders(c *gin.Context) {
+	items, err := h.authSvc.ListAuthProviders(c.Request.Context())
+	if err != nil {
+		if err == service.ErrAuthDBNotEnabled {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *AuthHandler) ListPublicAuthProviders(c *gin.Context) {
+	items, err := h.authSvc.ListPublicAuthProviders(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *AuthHandler) CreateAuthProvider(c *gin.Context) {
+	var req createAuthProviderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := h.authSvc.CreateAuthProvider(c.Request.Context(), req.Name, req.Type, req.Config); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderType, service.ErrAuthProviderName:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			if strings.Contains(err.Error(), "already exists") {
+				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusCreated)
+}
+
+func (h *AuthHandler) UpdateAuthProviderStatus(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider id"})
+		return
+	}
+	var req updateAuthProviderStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := h.authSvc.SetAuthProviderEnabled(c.Request.Context(), uint(id), req.IsEnabled); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) SetDefaultAuthProvider(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider id"})
+		return
+	}
+	if err := h.authSvc.SetDefaultAuthProvider(c.Request.Context(), uint(id)); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case service.ErrAuthProviderDisabled:
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

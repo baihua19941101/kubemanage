@@ -428,6 +428,13 @@ func TestRBACAndAudit(t *testing.T) {
 func TestAuthUserManagement(t *testing.T) {
 	r := NewRouter(nil, "mock", "")
 
+	publicProvidersReq, _ := http.NewRequest(http.MethodGet, "/api/v1/auth/providers/public", nil)
+	publicProvidersW := httptest.NewRecorder()
+	r.ServeHTTP(publicProvidersW, publicProvidersReq)
+	if publicProvidersW.Code != http.StatusOK {
+		t.Fatalf("public auth providers should be available: %d body=%s", publicProvidersW.Code, publicProvidersW.Body.String())
+	}
+
 	createReq := requestWithRole(http.MethodPost, "/api/v1/auth/users", `{"username":"p601-user","password":"123456","role":"readonly","allowedNamespaces":["dev"]}`, "admin")
 	createW := httptest.NewRecorder()
 	r.ServeHTTP(createW, createReq)
@@ -440,6 +447,13 @@ func TestAuthUserManagement(t *testing.T) {
 	r.ServeHTTP(listW, listReq)
 	if listW.Code != http.StatusServiceUnavailable {
 		t.Fatalf("admin list users should return 503 when auth db disabled: %d body=%s", listW.Code, listW.Body.String())
+	}
+
+	listProvidersReq := requestWithRole(http.MethodGet, "/api/v1/auth/providers", "", "admin")
+	listProvidersW := httptest.NewRecorder()
+	r.ServeHTTP(listProvidersW, listProvidersReq)
+	if listProvidersW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("admin list providers should return 503 when auth db disabled: %d body=%s", listProvidersW.Code, listProvidersW.Body.String())
 	}
 
 	viewerListReq := requestWithRole(http.MethodGet, "/api/v1/auth/users", "", "viewer")

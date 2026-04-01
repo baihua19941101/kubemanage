@@ -1,22 +1,57 @@
-import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
-import { useState } from "react";
+import { Alert, Box, Button, Card, CardContent, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../lib/api";
 import { useAuthStore } from "../stores/useAuthStore";
+
+type AuthProviderItem = {
+  name: string;
+  type: string;
+  isDefault: boolean;
+};
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("123456");
+  const [provider, setProvider] = useState("local");
+  const [providers, setProviders] = useState<AuthProviderItem[]>([{ name: "local", type: "local", isDefault: true }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    void loadProviders();
+  }, []);
+
+  async function loadProviders() {
+    try {
+      const resp = await apiFetch("/api/v1/auth/providers/public");
+      if (!resp.ok) {
+        return;
+      }
+      const data = (await resp.json()) as { items?: AuthProviderItem[] };
+      if (!data.items || data.items.length === 0) {
+        return;
+      }
+      setProviders(data.items);
+      const defaultProvider = data.items.find((item) => item.isDefault);
+      if (defaultProvider) {
+        setProvider(defaultProvider.name);
+      } else {
+        setProvider(data.items[0].name);
+      }
+    } catch {
+      // fallback to local provider only
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, provider);
       if (!result.ok) {
         setError(result.error || "登录失败");
         return;
@@ -48,6 +83,21 @@ export default function LoginPage() {
               首次启动默认管理员账号：admin / 123456
             </Typography>
             {error && <Alert severity="error">{error}</Alert>}
+            <FormControl>
+              <InputLabel id="provider-label">认证源</InputLabel>
+              <Select
+                labelId="provider-label"
+                label="认证源"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+              >
+                {providers.map((item) => (
+                  <MenuItem key={item.name} value={item.name}>
+                    {item.name} ({item.type})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="用户名"
               value={username}
@@ -72,4 +122,3 @@ export default function LoginPage() {
     </Box>
   );
 }
-

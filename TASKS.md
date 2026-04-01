@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第七阶段（P701 已完成）
+- 阶段：第八阶段（P801 已完成）
 - 更新时间：2026-04-01
 
 ## 任务列表
@@ -43,6 +43,7 @@
 | P501 | 第五阶段任务1：账号认证与用户体系 | 已完成 | 已完成账号密码认证闭环、管理员创建用户、Bearer 优先鉴权与前端登录态接入 |
 | P601 | 第六阶段任务1：用户管理增强 | 已完成 | 已完成用户列表、用户启停、重置密码、前端页面改造与冒烟验收 |
 | P701 | 第七阶段任务1：细粒度授权基础能力 | 已完成 | 已完成用户角色与授权范围在线编辑、前端交互与冒烟验收 |
+| P801 | 第八阶段任务1：认证源管理基础能力（local/ldap） | 已完成 | 已完成认证源模型、管理接口、登录 provider 语义与前端登录源选择 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -150,6 +151,11 @@
 | T117 | P701-B：后端用户授权编辑接口 | 已完成 | 已新增 PATCH /auth/users/:username，支持角色与授权范围更新 |
 | T118 | P701-C：前端用户授权编辑交互 | 已完成 | 已新增编辑授权弹窗并接入用户列表刷新 |
 | T119 | P701-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p701_fine_grained_auth_smoke_test.sh |
+| T120 | P801 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p801-auth-provider-foundation，已备份 backups/kubemanage-20260401-215918-p801.sql |
+| T121 | P801-A：README/TASKS 计划与状态同步 | 已完成 | 已同步第八阶段范围、拆分与当前状态（进行中） |
+| T122 | P801-B：后端认证源模型与管理接口 | 已完成 | 已新增 auth_providers 模型、默认初始化与认证源管理接口 |
+| T123 | P801-C：登录 provider 语义与前端登录页扩展 | 已完成 | 登录接口支持 provider，登录页新增认证源选择并读取公开认证源列表 |
+| T124 | P801-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p801_auth_provider_smoke_test.sh |
 
 ## 完成记录
 
@@ -327,3 +333,9 @@
 - 2026-04-01：完成 T118（前端用户管理页新增“编辑授权”弹窗与提交流程）
 - 2026-04-01：完成 T119（go test ./...、npm run build、scripts/p701_fine_grained_auth_smoke_test.sh 通过）
 - 2026-04-01：完成 P701（细粒度授权基础能力交付并验收通过）
+- 2026-04-01：完成 T120（P801 前置：创建 feature/p801-auth-provider-foundation，并完成数据库备份 backups/kubemanage-20260401-215918-p801.sql）
+- 2026-04-01：完成 T121（P801：README/TASKS 同步第八阶段范围、拆分与状态）
+- 2026-04-01：完成 T122（新增 auth_providers 模型、默认 provider 初始化与认证源管理接口）
+- 2026-04-01：完成 T123（登录接口支持 provider，前端登录页新增认证源选择）
+- 2026-04-01：完成 T124（go test ./...、npm run build、scripts/p801_auth_provider_smoke_test.sh 通过）
+- 2026-04-01：完成 P801（认证源管理基础能力交付并验收通过）
