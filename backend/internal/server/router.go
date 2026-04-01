@@ -2,6 +2,7 @@ package server
 
 import (
 	"strings"
+	"time"
 
 	"kubeManage/backend/internal/handlers"
 	"kubeManage/backend/internal/infra"
@@ -39,9 +40,10 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 	namespaceSvc := service.NewNamespaceService()
 	workloadSvc := service.NewWorkloadService()
 	liveWorkloadSvc := service.NewLiveWorkloadReader(clusterConnectionRepo)
+	terminalSessions := service.NewTerminalSessionStore(2 * time.Minute)
 	liveResourceSvc := service.NewLiveResourceReader(clusterConnectionRepo)
 	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc, clusterConnectionSvc, adapterMode)
-	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, adapterMode)
+	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, terminalSessions, adapterMode)
 	resourceHandler := handlers.NewResourceHandler(service.NewResourceService(), liveResourceSvc, adapterMode)
 	authHandler := handlers.NewAuthHandler(authSvc)
 	auditHandler := handlers.NewAuditHandler(auditSvc)
@@ -65,6 +67,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		api.GET("/pods/:name/yaml", workloadHandler.GetPodYAML)
 		api.GET("/pods/:name/logs", workloadHandler.GetPodLogs)
 		api.GET("/pods/:name/terminal/capabilities", workloadHandler.GetTerminalCapabilities)
+		api.GET("/pods/:name/terminal/ws", workloadHandler.TerminalWebSocket)
 		api.GET("/statefulsets", workloadHandler.ListStatefulSets)
 		api.GET("/statefulsets/:name", workloadHandler.GetStatefulSet)
 		api.GET("/statefulsets/:name/yaml", workloadHandler.GetStatefulSetYAML)
@@ -112,9 +115,15 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 			return workloadSvc.DeploymentNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_deployment_yaml"), workloadHandler.UpdateDeploymentYAML)
 		write.PUT("/pods/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.PodNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.PodNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_pod_yaml"), workloadHandler.UpdatePodYAML)
 		write.POST("/pods/:name/terminal/sessions", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.PodNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.PodNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("create_terminal_session"), workloadHandler.CreateTerminalSession)
 		write.PUT("/statefulsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
