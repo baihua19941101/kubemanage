@@ -134,6 +134,34 @@ func TestWorkloads(t *testing.T) {
 	if podLogW.Code != http.StatusOK {
 		t.Fatalf("get pod logs failed: %d body=%s", podLogW.Code, podLogW.Body.String())
 	}
+
+	statefulReq, _ := http.NewRequest(http.MethodGet, "/api/v1/statefulsets", nil)
+	statefulW := httptest.NewRecorder()
+	r.ServeHTTP(statefulW, statefulReq)
+	if statefulW.Code != http.StatusOK {
+		t.Fatalf("list statefulsets failed: %d body=%s", statefulW.Code, statefulW.Body.String())
+	}
+
+	daemonReq, _ := http.NewRequest(http.MethodGet, "/api/v1/daemonsets", nil)
+	daemonW := httptest.NewRecorder()
+	r.ServeHTTP(daemonW, daemonReq)
+	if daemonW.Code != http.StatusOK {
+		t.Fatalf("list daemonsets failed: %d body=%s", daemonW.Code, daemonW.Body.String())
+	}
+
+	jobReq, _ := http.NewRequest(http.MethodGet, "/api/v1/jobs", nil)
+	jobW := httptest.NewRecorder()
+	r.ServeHTTP(jobW, jobReq)
+	if jobW.Code != http.StatusOK {
+		t.Fatalf("list jobs failed: %d body=%s", jobW.Code, jobW.Body.String())
+	}
+
+	cronReq, _ := http.NewRequest(http.MethodGet, "/api/v1/cronjobs", nil)
+	cronW := httptest.NewRecorder()
+	r.ServeHTTP(cronW, cronReq)
+	if cronW.Code != http.StatusOK {
+		t.Fatalf("list cronjobs failed: %d body=%s", cronW.Code, cronW.Body.String())
+	}
 }
 
 func TestResourceEndpoints(t *testing.T) {
