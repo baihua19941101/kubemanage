@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第十二阶段（P1204 已完成）
+- 阶段：第十三阶段（P1301 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -200,6 +200,10 @@
 | T159 | P1204-C：前端 Policy 新建交互 | 已完成 | PolicyPage 已新增新建 YAML 弹窗、创建请求与创建后刷新 |
 | T160 | P1204-D：联调与验收 | 已完成 | 已通过 go test ./...、frontend build、scripts/p1204_policy_create_smoke_test.sh |
 | T161 | P1204 收口优化：Create 文案与命名空间下拉选择 | 已完成 | 已将按钮改为 Create，并支持关联全部 namespace 下拉选择创建 |
+| T162 | 会话收口：暂停新功能开发并同步进度文档 | 已完成 | 已按指令停止继续开发，完成 README/TASKS 最新进度核对与收口记录 |
+| T163 | P1301-A：README real-only 口径纠偏 | 已完成 | 已标注基础验证中 live/mock 能力边界，修正易误导命令说明 |
+| T164 | P1301-B：`/clusters/switch` real-only 兼容 | 已完成 | 已支持 live 模式按连接名切换激活集群，并补充路由测试 |
+| T165 | P1301-C：回归与验收 | 已完成 | 已通过 go test ./...、npm run build，并完成 README/TASKS 状态同步 |
 
 ## 完成记录
 
@@ -431,3 +435,7 @@
 - 2026-04-02：完成 T160（联调验收通过：go test ./...、npm run build、scripts/p1204_policy_create_smoke_test.sh）
 - 2026-04-02：完成 P1204（Policy 新建能力第一版交付完成）
 - 2026-04-02：完成 T161（需求调整：Create 按钮文案与命名空间全量下拉选择）
+- 2026-04-02：完成 T162（按会话指令暂停新功能开发，并完成任务文档进度同步收口）
+- 2026-04-02：完成 T163（README 基础验证口径纠偏，明确 live/mock 能力边界）
+- 2026-04-02：完成 T164（`/clusters/switch` 支持 real-only 按连接名激活，并补充路由测试）
+- 2026-04-02：完成 T165（回归通过：go test ./...、npm run build，完成阶段状态更新）

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"kubeManage/backend/internal/service"
 
@@ -101,13 +102,36 @@ func (h *ClusterHandler) tryLiveCluster(c *gin.Context) (service.LiveClusterSumm
 }
 
 func (h *ClusterHandler) SwitchCluster(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "cluster switch path not enabled in real-only mode"})
-		return
-	}
 	var req SwitchClusterRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	targetName := strings.TrimSpace(req.Name)
+
+	if h.adapterMode != "mock" {
+		if h.clusterConnectionSvc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cluster connection service unavailable"})
+			return
+		}
+		if err := h.clusterConnectionSvc.ActivateByName(c.Request.Context(), targetName); err != nil {
+			if err.Error() == "cluster name is required" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err.Error() == "cluster connection not found: "+targetName {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		current, err := h.clusterConnectionSvc.GetLiveCluster(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, current)
 		return
 	}
 

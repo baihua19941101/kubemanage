@@ -119,12 +119,15 @@ curl http://localhost:8080/api/v1/clusters
 curl http://localhost:8080/api/v1/clusters/current
 ```
 
-切换当前集群：
+切换当前集群（live/mock 均可，需写确认头）：
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/clusters/switch \
+  -H "X-User: admin" \
+  -H "X-User-Role: admin" \
+  -H "X-Action-Confirm: CONFIRM" \
   -H "Content-Type: application/json" \
-  -d '{"name":"staging-cluster"}'
+  -d '{"name":"test1"}'
 ```
 
 名称空间列表：
@@ -134,6 +137,8 @@ curl http://localhost:8080/api/v1/namespaces
 ```
 
 创建名称空间：
+
+> 说明：以下名称空间写入与 YAML 读写接口当前仅用于 `KM_K8S_ADAPTER_MODE=mock` 调试；`live` 模式返回 `501`。
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/namespaces \
@@ -166,6 +171,8 @@ curl http://localhost:8080/api/v1/deployments
 ```
 
 查看 Deployment YAML：
+
+> 说明：Deployment YAML 读写当前仅用于 `KM_K8S_ADAPTER_MODE=mock` 调试；`live` 模式返回 `501`。
 
 ```bash
 curl http://localhost:8080/api/v1/deployments/web-api/yaml
@@ -1108,6 +1115,24 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p1204_policy_create_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
 - 当前任务：`P1204 已收口`
 
+### P1301 计划（2026-04-02）
+
+#### 范围定义
+- 目标：修复“README/TASKS 进度口径”与“real-only 实际行为”偏差，避免联调误导
+- 本轮聚焦：文档止血 + 关键接口兼容补齐（`/clusters/switch` 在 real-only 可用）
+- 本轮不纳入：名称空间写路径与 Deployment YAML 写路径的 real-only 全量改造
+
+#### 开发拆分
+1. `P1301-A`：README 基础验证口径修正（live/mock 能力边界）
+2. `P1301-B`：`/clusters/switch` real-only 兼容实现（按连接名激活）
+3. `P1301-C`：回归与验收（go test、frontend build、TASKS 状态同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成开发：README 基础验证口径修正；`/clusters/switch` 支持 real-only 按连接名激活
+- 已完成验证：`go test ./...`、`npm run build` 通过
+- 当前任务：`P1301 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1118,7 +1143,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十二阶段（P1204 已完成）`
-- 当前任务：`P1204：Policy 新建能力第一版（已完成）`
-- 当前状态：`Policy CRUD 基础闭环已交付并通过联调验收`
-- 下一任务：`与你确认下一阶段优先级`
+- 当前阶段：`第十三阶段（P1301 已完成）`
+- 当前任务：`P1301：文档与 real-only 口径偏差对齐（已完成）`
+- 当前状态：`README 基础验证口径已纠偏，/clusters/switch 在 real-only 可用`
+- 下一任务：`待你确认是否继续推进 namespace/deployment 写路径 real-only 改造`
