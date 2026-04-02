@@ -152,7 +152,7 @@ main() {
 
   body="${TMP_DIR}/login-default-ldap.json"
   code="$(request_json POST /api/v1/auth/login '{"username":"admin","password":"123456"}' "" no "${body}")"
-  expect_status "${code}" "501" "default ldap login should return not implemented"
+  expect_status "${code}" "502" "default ldap login should return unavailable"
 
   body="${TMP_DIR}/login-local-again.json"
   code="$(request_json POST /api/v1/auth/login '{"username":"admin","password":"123456","provider":"local"}' "" no "${body}")"

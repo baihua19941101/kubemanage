@@ -79,8 +79,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case service.ErrAuthProviderDisabled:
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		case service.ErrLDAPNotImplemented:
-			c.JSON(http.StatusNotImplemented, gin.H{"error": err.Error()})
+		case service.ErrLDAPConfigInvalid:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case service.ErrLDAPUnavailable:
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
