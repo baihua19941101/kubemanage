@@ -84,21 +84,41 @@ type WorkloadState = {
   error: string;
   load: () => Promise<void>;
   getDeploymentYAML: (name: string) => Promise<string>;
-  saveDeploymentYAML: (name: string, yaml: string) => Promise<boolean>;
+  saveDeploymentYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
   getPodYAML: (name: string) => Promise<string>;
-  savePodYAML: (name: string, yaml: string) => Promise<boolean>;
+  savePodYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
   getPodLogs: (name: string, options?: PodLogOptions) => Promise<string>;
   getTerminalCapabilities: (name: string) => Promise<TerminalCapabilities>;
   createTerminalSession: (name: string, container?: string) => Promise<{ error: string; enabled: boolean; sessionId?: string; wsPath?: string; ttlSeconds?: number; expiresAt?: string }>;
   getStatefulSetYAML: (name: string) => Promise<string>;
-  saveStatefulSetYAML: (name: string, yaml: string) => Promise<boolean>;
+  saveStatefulSetYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
   getDaemonSetYAML: (name: string) => Promise<string>;
-  saveDaemonSetYAML: (name: string, yaml: string) => Promise<boolean>;
+  saveDaemonSetYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
   getJobYAML: (name: string) => Promise<string>;
-  saveJobYAML: (name: string, yaml: string) => Promise<boolean>;
+  saveJobYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
   getCronJobYAML: (name: string) => Promise<string>;
-  saveCronJobYAML: (name: string, yaml: string) => Promise<boolean>;
+  saveCronJobYAML: (name: string, yaml: string) => Promise<{ ok: true; requestId?: string }>;
 };
+
+async function saveWorkloadYaml(
+  path: string,
+  yaml: string,
+  fallbackMessage: string
+): Promise<{ ok: true; requestId?: string }> {
+  const resp = await apiFetch(path, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Action-Confirm": "CONFIRM"
+    },
+    body: JSON.stringify({ yaml })
+  });
+  if (!resp.ok) {
+    throw await parseApiError(resp, fallbackMessage);
+  }
+  const requestId = resp.headers.get("X-Request-Id") || undefined;
+  return { ok: true, requestId };
+}
 
 export const useWorkloadStore = create<WorkloadState>((set) => ({
   deployments: [],
@@ -151,15 +171,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   saveDeploymentYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/deployments/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/deployments/${name}/yaml`, yaml, "保存 Deployment YAML 失败");
   },
   getPodYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/pods/${name}/yaml`);
@@ -169,15 +181,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   savePodYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/pods/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/pods/${name}/yaml`, yaml, "保存 Pod YAML 失败");
   },
   getPodLogs: async (name: string, options?: PodLogOptions) => {
     const params = new URLSearchParams();
@@ -224,15 +228,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   saveStatefulSetYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/statefulsets/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/statefulsets/${name}/yaml`, yaml, "保存 StatefulSet YAML 失败");
   },
   getDaemonSetYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/daemonsets/${name}/yaml`);
@@ -242,15 +238,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   saveDaemonSetYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/daemonsets/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/daemonsets/${name}/yaml`, yaml, "保存 DaemonSet YAML 失败");
   },
   getJobYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/jobs/${name}/yaml`);
@@ -260,15 +248,7 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   saveJobYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/jobs/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/jobs/${name}/yaml`, yaml, "保存 Job YAML 失败");
   },
   getCronJobYAML: async (name: string) => {
     const resp = await apiFetch(`/api/v1/cronjobs/${name}/yaml`);
@@ -278,14 +258,6 @@ export const useWorkloadStore = create<WorkloadState>((set) => ({
     return resp.text();
   },
   saveCronJobYAML: async (name: string, yaml: string) => {
-    const resp = await apiFetch(`/api/v1/cronjobs/${name}/yaml`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Action-Confirm": "CONFIRM"
-      },
-      body: JSON.stringify({ yaml })
-    });
-    return resp.ok;
+    return saveWorkloadYaml(`/api/v1/cronjobs/${name}/yaml`, yaml, "保存 CronJob YAML 失败");
   }
 }));
