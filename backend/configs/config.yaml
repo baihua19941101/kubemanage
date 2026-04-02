@@ -1,0 +1,32 @@
+server:
+  listen_addr: ":8080"
+
+database:
+  mysql_dsn: "root:123456@tcp(localhost:3306)/kubemanage?charset=utf8mb4&parseTime=True&loc=Local"
+
+redis:
+  addr: "localhost:6379"
+  pass: ""
+  db: 0
+
+k8s:
+  # Kubernetes 适配模式：live=真实集群；auto=自动选择；mock=示例数据（当前研发目标建议保持 live）
+  adapter_mode: "live"
+
+security:
+  # 敏感字段加密密钥（如集群连接 token/kubeconfig）。留空为兼容模式，建议生产通过 KM_SECRET_KEY 设置强密钥。
+  secret_key: ""
+
+auth:
+  jwt_secret: "km-dev-jwt-secret"
+  access_ttl_seconds: 3600
+  refresh_ttl_seconds: 604800
+  compat_stage_keep: 1
+
+log:
+  # 日志级别：debug/info/warn(error 前一层)/error；不识别值会回退到 info
+  level: "info"
+  # 日志格式：text 或 json；不识别值会回退到 text
+  format: "text"
+  # 日志输出：stdout / stderr / 文件路径（如 logs/backend.log，会自动创建目录）
+  output: "stdout"

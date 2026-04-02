@@ -52,14 +52,19 @@ GOPROXY=https://goproxy.cn,direct go mod tidy
 - Redis 密码：空
 - Redis DB：`0`
 - MySQL 库名：`kubemanage`（需提前创建）
+- 默认配置文件：`backend/configs/config.yaml`（通过 `KM_CONFIG_FILE` 可指定其它路径）
 
 支持环境变量覆盖：
 
 - `KM_LISTEN_ADDR`
+- `KM_CONFIG_FILE`（配置文件路径，默认 `configs/config.yaml`，相对 `backend/` 目录）
 - `KM_MYSQL_DSN`
 - `KM_REDIS_ADDR`
 - `KM_REDIS_PASS`
 - `KM_REDIS_DB`
+- `KM_LOG_LEVEL`（`debug/info/warn/error`）
+- `KM_LOG_FORMAT`（`text/json`）
+- `KM_LOG_OUTPUT`（`stdout/stderr/日志文件路径`）
 - `KM_K8S_ADAPTER_MODE`（建议仅使用 `live` / `auto`，当前研发目标为 real-only）
 - `KM_SECRET_KEY`（连接敏感字段加密密钥，留空则保持明文兼容模式）
 - `KM_TERMINAL_SESSION_TTL_SECONDS`（终端会话 TTL 秒数，默认 `120`）
@@ -1292,6 +1297,33 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 二次调整：去掉日志页 `terminal bridge ready` 提示；菜单动作不再触发详情抽屉；`Show Configuration` 调整为 YAML 查看
 - 当前任务：`P1402 已收口`
 
+### P1501 计划（2026-04-02）
+
+#### 范围定义
+- 目标：将后端关键运行配置改为“配置文件主导 + 环境变量覆盖”模式，优先覆盖数据库与日志配置
+- 本轮聚焦：`MySQL/Redis` 配置文件化、日志级别/格式/输出可配置化、启动加载链路改造
+- 本轮不纳入：远程配置中心、配置热更新、审计日志落库/外部日志平台对接
+
+#### 能力范围
+- 新增后端配置文件 `backend/configs/config.yaml`
+- 后端配置加载支持 `KM_CONFIG_FILE` 指定文件路径
+- 数据库配置（MySQL/Redis）默认从配置文件读取，保留现有环境变量覆盖能力
+- 日志配置支持 `level/format/output`（stdout 或文件），并在启动时统一初始化
+
+#### 开发拆分
+1. `P1501-A`：README/TASKS 计划与状态同步 + 开发前备份 + 功能分支基线
+2. `P1501-B`：后端配置加载重构（配置文件 + 环境变量覆盖）
+3. `P1501-C`：日志初始化接入（level/format/output）
+4. `P1501-D`：联调与验收（go test、配置文件启动验证、README/TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：功能分支 `feature/p1501-config-file`、数据库备份 `backups/kubemanage-20260402-223627-p1501.sql`
+- 已完成开发：后端新增 `backend/configs/config.yaml`，配置加载改为“配置文件主导 + 环境变量覆盖”
+- 已完成开发：日志初始化支持 `level/format/output` 可配置（stdout/stderr/文件）
+- 已完成验证：`cd backend && GOPROXY=https://goproxy.cn,direct go test ./...` 通过；临时端口启动验证通过
+- 当前任务：`P1501 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1302,7 +1334,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第二十阶段（P1402 已完成）`
-- 当前任务：`会话收口：停止新功能开发（已执行）`
-- 当前状态：`P1402 最新改动已同步到 README/TASKS，暂停继续开发等待下一轮指令`
+- 当前阶段：`第二十一阶段（P1501 已完成）`
+- 当前任务：`P1501：后端配置文件化（数据库/日志）（已完成）`
+- 当前状态：`配置文件化与日志可配置化已落地并完成回归`
 - 下一任务：`待你确认下一轮优先级后再启动开发`
