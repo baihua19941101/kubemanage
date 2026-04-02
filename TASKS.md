@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第十三阶段（P1301 已完成）
+- 阶段：第十九阶段（P1307 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -204,6 +204,29 @@
 | T163 | P1301-A：README real-only 口径纠偏 | 已完成 | 已标注基础验证中 live/mock 能力边界，修正易误导命令说明 |
 | T164 | P1301-B：`/clusters/switch` real-only 兼容 | 已完成 | 已支持 live 模式按连接名切换激活集群，并补充路由测试 |
 | T165 | P1301-C：回归与验收 | 已完成 | 已通过 go test ./...、npm run build，并完成 README/TASKS 状态同步 |
+| T166 | P1302-A：第二轮对齐前置备份与计划同步 | 已完成 | 已完成数据库备份 backups/kubemanage-20260402-130753-p1302.sql，并同步 README/TASKS 范围 |
+| T167 | P1302-B：Namespace real-only 写链路对齐 | 已完成 | 已支持 live 模式 namespace 创建/删除/YAML 查看下载 |
+| T168 | P1302-C：Deployment real-only YAML 写链路对齐 | 已完成 | 已支持 live 模式 deployment YAML 查看/保存，并补名称/命名空间一致性校验 |
+| T169 | P1302-C 补充：Deployment 写权限作用域解析对齐 | 已完成 | Deployment YAML 写入路由作用域解析已改为 live 优先命名空间解析 |
+| T170 | P1302-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build，并完成 README/TASKS 状态同步 |
+| T171 | Namespace 创建权限前端对齐修复 | 已完成 | 已按授权命名空间范围控制创建/删除按钮状态，并展示可写范围提示 |
+| T172 | P1303-A：YAML 弹窗折叠样式统一改造 | 已完成 | 已将共享 YamlDialog 改为可折叠样式并支持展开/收起 |
+| T173 | P1303-B：YAML 样式统一接入验证 | 已完成 | Namespace/Workload/Node/Policy 的 YAML 弹窗已统一生效 |
+| T174 | P1303-C：回归与验收 | 已完成 | 已通过 frontend npm run build，并完成 README/TASKS 同步 |
+| T175 | P1304-A：字段级折叠改造前置备份与依赖准备 | 已完成 | 已完成数据库备份 backups/kubemanage-20260402-132840-p1304.sql，并新增 frontend `yaml` 依赖 |
+| T176 | P1304-B：YamlDialog 字段级折叠视图改造 | 已完成 | 已新增“结构视图/源码视图”，支持 key 级折叠与全量展开/折叠 |
+| T177 | P1304-C：回归与验收 | 已完成 | 已通过 frontend npm run build，并完成 README/TASKS 同步 |
+| T178 | P1305-A：Rancher 风格编辑器依赖接入 | 已完成 | 已新增 `react-ace` 与 `ace-builds` 并使用国内源安装 |
+| T179 | P1305-B：YamlDialog Rancher 风格改造 | 已完成 | 已改为 YAML 编辑器主视图（行号+gutter 折叠）并保留结构视图 |
+| T180 | P1305-C：回归与验收 | 已完成 | 已通过 frontend npm run build，并完成 README/TASKS 同步 |
+| T181 | P1306-A：YAML 工具栏增强前置备份 | 已完成 | 已完成数据库备份 backups/kubemanage-20260402-133851-p1306.sql |
+| T182 | P1306-B：YamlDialog 工具栏增强 | 已完成 | 已新增导入文件、下载、还原、变更预览操作并保留 key 折叠编辑 |
+| T183 | P1306-C：回归与验收 | 已完成 | 已通过 frontend npm run build，并完成 README/TASKS 同步 |
+| T184 | Deployment YAML 按钮无反馈修复 | 已完成 | WorkloadPage 已补 YAML 打开/保存异常提示与加载态，避免点击无反馈 |
+| T185 | P1307-A：5 类工作负载对齐前置备份 | 已完成 | 已完成数据库备份 backups/kubemanage-20260402-143130-p1307.sql |
+| T186 | P1307-B：live reader 补齐 5 类 YAML 读写 | 已完成 | 已支持 Pod/StatefulSet/DaemonSet/Job/CronJob YAML 查看与保存 |
+| T187 | P1307-C：live 写入作用域解析对齐 | 已完成 | 已将 5 类写路由命名空间解析统一改为 live 优先 |
+| T188 | P1307-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build，并完成 README/TASKS 同步 |
 
 ## 完成记录
 
@@ -439,3 +462,26 @@
 - 2026-04-02：完成 T163（README 基础验证口径纠偏，明确 live/mock 能力边界）
 - 2026-04-02：完成 T164（`/clusters/switch` 支持 real-only 按连接名激活，并补充路由测试）
 - 2026-04-02：完成 T165（回归通过：go test ./...、npm run build，完成阶段状态更新）
+- 2026-04-02：完成 T166（第二轮对齐前置数据库备份：backups/kubemanage-20260402-130753-p1302.sql）
+- 2026-04-02：完成 T167（Namespace real-only 写链路打通：创建/删除/YAML 查看下载）
+- 2026-04-02：完成 T168（Deployment real-only YAML 查看/保存打通并增加一致性校验）
+- 2026-04-02：完成 T169（Deployment YAML 写入作用域解析调整为 live 优先）
+- 2026-04-02：完成 T170（第二轮回归通过：go test ./...、npm run build，README/TASKS 已同步）
+- 2026-04-02：完成 T171（Namespace 前端权限对齐修复：创建/删除按命名空间授权范围控制并补提示）
+- 2026-04-02：完成 T172（共享 YamlDialog 重构为可折叠样式，支持展开/收起）
+- 2026-04-02：完成 T173（Namespace/Workload/Node/Policy YAML 交互统一生效）
+- 2026-04-02：完成 T174（前端构建通过并完成文档与任务状态同步）
+- 2026-04-02：完成 T175（字段级折叠改造前置备份完成，并新增 `yaml` 解析依赖）
+- 2026-04-02：完成 T176（YAML 结构视图支持 key 级折叠/展开与源码双视图切换）
+- 2026-04-02：完成 T177（前端构建通过并完成 README/TASKS 状态同步）
+- 2026-04-02：完成 T178（接入 `react-ace/ace-builds`，用于 YAML 编辑器折叠能力）
+- 2026-04-02：完成 T179（YAML 编辑默认切换为 Rancher 风格代码编辑器，支持 key 折叠）
+- 2026-04-02：完成 T180（前端构建通过并完成 README/TASKS 状态同步）
+- 2026-04-02：完成 T181（YAML 工具栏增强前置数据库备份：backups/kubemanage-20260402-133851-p1306.sql）
+- 2026-04-02：完成 T182（YAML 编辑器新增导入/下载/还原/变更预览操作）
+- 2026-04-02：完成 T183（前端构建通过并完成 README/TASKS 状态同步）
+- 2026-04-02：完成 T184（修复 Deployment YAML 按钮点击无反馈，新增错误提示与加载状态）
+- 2026-04-02：完成 T185（5 类工作负载 real-only 对齐前置数据库备份：backups/kubemanage-20260402-143130-p1307.sql）
+- 2026-04-02：完成 T186（live reader 补齐 Pod/StatefulSet/DaemonSet/Job/CronJob YAML 读写）
+- 2026-04-02：完成 T187（5 类写路由作用域解析切换为 live 优先命名空间判定）
+- 2026-04-02：完成 T188（后端测试与前端构建通过，并完成 README/TASKS 同步）

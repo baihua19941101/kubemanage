@@ -118,6 +118,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [selectedName, setSelectedName] = useState("");
   const [yamlOpen, setYamlOpen] = useState(false);
   const [yamlText, setYamlText] = useState("");
+  const [yamlError, setYamlError] = useState("");
+  const [yamlLoading, setYamlLoading] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [rawLogsText, setRawLogsText] = useState("");
   const [logKeyword, setLogKeyword] = useState("");
@@ -254,40 +256,58 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
   async function openYaml() {
     if (!selectedName) return;
-    if (mode === "deployments") {
-      setYamlText(await getDeploymentYAML(selectedName));
-    } else if (mode === "pods") {
-      setYamlText(await getPodYAML(selectedName));
-    } else if (mode === "statefulsets") {
-      setYamlText(await getStatefulSetYAML(selectedName));
-    } else if (mode === "daemonsets") {
-      setYamlText(await getDaemonSetYAML(selectedName));
-    } else if (mode === "jobs") {
-      setYamlText(await getJobYAML(selectedName));
-    } else {
-      setYamlText(await getCronJobYAML(selectedName));
+    setYamlLoading(true);
+    setYamlError("");
+    try {
+      if (mode === "deployments") {
+        setYamlText(await getDeploymentYAML(selectedName));
+      } else if (mode === "pods") {
+        setYamlText(await getPodYAML(selectedName));
+      } else if (mode === "statefulsets") {
+        setYamlText(await getStatefulSetYAML(selectedName));
+      } else if (mode === "daemonsets") {
+        setYamlText(await getDaemonSetYAML(selectedName));
+      } else if (mode === "jobs") {
+        setYamlText(await getJobYAML(selectedName));
+      } else {
+        setYamlText(await getCronJobYAML(selectedName));
+      }
+      setYamlOpen(true);
+    } catch (err) {
+      setYamlError(err instanceof Error ? err.message : "打开 YAML 失败");
+    } finally {
+      setYamlLoading(false);
     }
-    setYamlOpen(true);
   }
 
   async function saveYaml(yaml: string) {
     if (!selectedName) return;
+    setYamlLoading(true);
+    setYamlError("");
     let ok = false;
-    if (mode === "deployments") {
-      ok = await saveDeploymentYAML(selectedName, yaml);
-    } else if (mode === "pods") {
-      ok = await savePodYAML(selectedName, yaml);
-    } else if (mode === "statefulsets") {
-      ok = await saveStatefulSetYAML(selectedName, yaml);
-    } else if (mode === "daemonsets") {
-      ok = await saveDaemonSetYAML(selectedName, yaml);
-    } else if (mode === "jobs") {
-      ok = await saveJobYAML(selectedName, yaml);
-    } else {
-      ok = await saveCronJobYAML(selectedName, yaml);
-    }
-    if (ok) {
-      setYamlOpen(false);
+    try {
+      if (mode === "deployments") {
+        ok = await saveDeploymentYAML(selectedName, yaml);
+      } else if (mode === "pods") {
+        ok = await savePodYAML(selectedName, yaml);
+      } else if (mode === "statefulsets") {
+        ok = await saveStatefulSetYAML(selectedName, yaml);
+      } else if (mode === "daemonsets") {
+        ok = await saveDaemonSetYAML(selectedName, yaml);
+      } else if (mode === "jobs") {
+        ok = await saveJobYAML(selectedName, yaml);
+      } else {
+        ok = await saveCronJobYAML(selectedName, yaml);
+      }
+      if (ok) {
+        setYamlOpen(false);
+      } else {
+        setYamlError("保存 YAML 失败，请检查权限与请求参数");
+      }
+    } catch (err) {
+      setYamlError(err instanceof Error ? err.message : "保存 YAML 失败");
+    } finally {
+      setYamlLoading(false);
     }
   }
 
@@ -429,6 +449,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         }
       >
         {error && <Alert severity="error" sx={{ m: 1.5 }}>{error}</Alert>}
+        {yamlError && <Alert severity="error" sx={{ m: 1.5 }}>{yamlError}</Alert>}
 
         {mode === "deployments" && (
           <ResourceTable
@@ -498,7 +519,9 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         actions={
           selectedName ? (
             <Stack direction="row" spacing={1}>
-              <Button size="small" onClick={openYaml}>查看/编辑 YAML</Button>
+              <Button size="small" onClick={openYaml} disabled={yamlLoading}>
+                {yamlLoading ? "YAML 加载中..." : "查看/编辑 YAML"}
+              </Button>
               {mode === "pods" && (
                 <Button size="small" onClick={() => void openLogs()} disabled={logsLoading}>
                   查看日志

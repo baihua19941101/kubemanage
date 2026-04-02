@@ -9,8 +9,13 @@ import (
 	"sync"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"kubeManage/backend/internal/infra"
+	"sigs.k8s.io/yaml"
 )
 
 type ClusterConnectionMode string
@@ -244,6 +249,99 @@ func (s *ClusterConnectionService) ListLiveNamespaces(ctx context.Context) ([]Na
 		return nil, err
 	}
 	return s.adapter.ListNamespaces(ctx, record)
+}
+
+func (s *ClusterConnectionService) CreateLiveNamespace(ctx context.Context, name string, labels map[string]string) (Namespace, error) {
+	clientset, err := s.buildActiveClientset(ctx)
+	if err != nil {
+		return Namespace{}, err
+	}
+	target := strings.TrimSpace(name)
+	if target == "" {
+		return Namespace{}, errors.New("namespace name is required")
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	created, err := clientset.CoreV1().Namespaces().Create(timeoutCtx, &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   target,
+			Labels: labels,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		if k8serrors.IsAlreadyExists(err) {
+			return Namespace{}, fmt.Errorf("namespace already exists: %s", target)
+		}
+		return Namespace{}, fmt.Errorf("create namespace failed: %w", err)
+	}
+	return Namespace{
+		Name:      created.Name,
+		Status:    string(created.Status.Phase),
+		Labels:    created.Labels,
+		CreatedAt: created.CreationTimestamp.Time,
+		Age:       humanAge(created.CreationTimestamp.Time),
+	}, nil
+}
+
+func (s *ClusterConnectionService) DeleteLiveNamespace(ctx context.Context, name string) error {
+	clientset, err := s.buildActiveClientset(ctx)
+	if err != nil {
+		return err
+	}
+	target := strings.TrimSpace(name)
+	if target == "" {
+		return errors.New("namespace name is required")
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if err := clientset.CoreV1().Namespaces().Delete(timeoutCtx, target, metav1.DeleteOptions{}); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return fmt.Errorf("namespace not found: %s", target)
+		}
+		return fmt.Errorf("delete namespace failed: %w", err)
+	}
+	return nil
+}
+
+func (s *ClusterConnectionService) GetLiveNamespaceYAML(ctx context.Context, name string) (string, error) {
+	clientset, err := s.buildActiveClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	target := strings.TrimSpace(name)
+	if target == "" {
+		return "", errors.New("namespace name is required")
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	item, err := clientset.CoreV1().Namespaces().Get(timeoutCtx, target, metav1.GetOptions{})
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("namespace not found: %s", target)
+		}
+		return "", fmt.Errorf("get namespace failed: %w", err)
+	}
+	raw, err := yaml.Marshal(item)
+	if err != nil {
+		return "", fmt.Errorf("marshal namespace yaml failed: %w", err)
+	}
+	return string(raw), nil
+}
+
+func (s *ClusterConnectionService) buildActiveClientset(ctx context.Context) (*kubernetes.Clientset, error) {
+	record, err := s.repo.GetActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := buildRestConfig(connectionToTestInput(record))
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("build kubernetes client failed: %w", err)
+	}
+	return clientset, nil
 }
 
 func sanitizeConnection(item infra.ClusterConnectionRecord) ClusterConnection {

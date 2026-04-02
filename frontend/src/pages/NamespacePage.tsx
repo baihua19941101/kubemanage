@@ -22,6 +22,8 @@ export default function NamespacePage() {
   const remove = useNamespaceStore((s) => s.remove);
   const fetchYaml = useNamespaceStore((s) => s.fetchYaml);
   const canNamespaceWrite = useAuthStore((s) => s.canNamespaceWrite);
+  const canWriteNamespace = useAuthStore((s) => s.canWriteNamespace);
+  const allowedNamespaces = useAuthStore((s) => s.allowedNamespaces);
 
   const [keyword, setKeyword] = useState("");
   const [createName, setCreateName] = useState("");
@@ -47,6 +49,16 @@ export default function NamespacePage() {
     { key: "age", header: "Age", render: (row: NamespaceRow) => row.age }
   ];
 
+  const normalizedCreateName = createName.trim();
+  const canCreateByScope = normalizedCreateName.length > 0 && canWriteNamespace(normalizedCreateName);
+  const createDeniedByScope = normalizedCreateName.length > 0 && !canWriteNamespace(normalizedCreateName);
+  const scopeHint =
+    allowedNamespaces().length === 0
+      ? "当前账号无可写命名空间"
+      : allowedNamespaces()[0] === "*"
+        ? "当前账号可写全部命名空间"
+        : `可写命名空间：${allowedNamespaces().join(", ")}`;
+
   return (
     <>
       <PageScaffold
@@ -59,11 +71,13 @@ export default function NamespacePage() {
               placeholder="新建名称空间"
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
+              error={createDeniedByScope}
+              helperText={createDeniedByScope ? `无权限创建：${normalizedCreateName}` : scopeHint}
               sx={{ width: 220 }}
             />
             <Button
               variant="contained"
-              disabled={!canNamespaceWrite() || !createName.trim()}
+              disabled={!canNamespaceWrite() || !canCreateByScope}
               onClick={async () => {
                 await create(createName);
                 setCreateName("");
@@ -123,7 +137,7 @@ export default function NamespacePage() {
               <Button
                 size="small"
                 color="error"
-                disabled={!canNamespaceWrite()}
+                disabled={!canNamespaceWrite() || !canWriteNamespace(selected.name)}
                 onClick={async () => {
                   if (!selected) return;
                   if (window.confirm(`确认删除名称空间 ${selected.name} ?`)) {

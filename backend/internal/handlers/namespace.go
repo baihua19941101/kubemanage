@@ -41,13 +41,30 @@ func (h *NamespaceHandler) ListNamespaces(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace write path not enabled in real-only mode"})
-		return
-	}
 	var req CreateNamespaceRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" {
+		if h.clusterConnectionSvc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cluster connection service unavailable"})
+			return
+		}
+		ns, err := h.clusterConnectionSvc.CreateLiveNamespace(c.Request.Context(), req.Name, req.Labels)
+		if err != nil {
+			if err.Error() == "namespace name is required" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err.Error() == "namespace already exists: "+req.Name {
+				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, ns)
 		return
 	}
 
@@ -69,13 +86,29 @@ func (h *NamespaceHandler) CreateNamespace(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) DeleteNamespace(c *gin.Context) {
-	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace write path not enabled in real-only mode"})
-		return
-	}
 	name := c.Param("name")
 	if name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "namespace name is required"})
+		return
+	}
+	if h.adapterMode != "mock" {
+		if h.clusterConnectionSvc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cluster connection service unavailable"})
+			return
+		}
+		if err := h.clusterConnectionSvc.DeleteLiveNamespace(c.Request.Context(), name); err != nil {
+			if err.Error() == "namespace name is required" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			if err.Error() == "namespace not found: "+name {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Status(http.StatusNoContent)
 		return
 	}
 
@@ -92,11 +125,25 @@ func (h *NamespaceHandler) DeleteNamespace(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) GetNamespaceYAML(c *gin.Context) {
+	name := c.Param("name")
 	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace yaml path not enabled in real-only mode"})
+		if h.clusterConnectionSvc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cluster connection service unavailable"})
+			return
+		}
+		content, err := h.clusterConnectionSvc.GetLiveNamespaceYAML(c.Request.Context(), name)
+		if err != nil {
+			if err.Error() == "namespace not found: "+name {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.String(http.StatusOK, content)
 		return
 	}
-	name := c.Param("name")
 	content, err := h.namespaceSvc.YAML(name)
 	if err != nil {
 		if err.Error() == "namespace not found: "+name {
@@ -112,11 +159,26 @@ func (h *NamespaceHandler) GetNamespaceYAML(c *gin.Context) {
 }
 
 func (h *NamespaceHandler) DownloadNamespaceYAML(c *gin.Context) {
+	name := c.Param("name")
 	if h.adapterMode != "mock" {
-		c.JSON(http.StatusNotImplemented, gin.H{"error": "namespace yaml download path not enabled in real-only mode"})
+		if h.clusterConnectionSvc == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "cluster connection service unavailable"})
+			return
+		}
+		content, err := h.clusterConnectionSvc.GetLiveNamespaceYAML(c.Request.Context(), name)
+		if err != nil {
+			if err.Error() == "namespace not found: "+name {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=\"namespace-"+name+".yaml\"")
+		c.String(http.StatusOK, content)
 		return
 	}
-	name := c.Param("name")
 	content, err := h.namespaceSvc.YAML(name)
 	if err != nil {
 		if err.Error() == "namespace not found: "+name {
