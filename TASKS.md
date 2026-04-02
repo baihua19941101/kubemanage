@@ -245,6 +245,7 @@
 | T203 | P1402 二次调整：Show Configuration 改 YAML 查看 | 已完成 | Show Configuration 现为 YAML 查看（只读） |
 | T204 | 会话收口：停止新功能开发并同步最新进度 | 已完成 | 已按指令停止开发，并完成 README/TASKS 最新状态同步 |
 | T205 | P1402 PR 冲突解决（与 origin/main 对齐） | 已完成 | 已完成 rebase 到 origin/main，处理 README/TASKS/终端链路与 WorkloadPage 冲突 |
+| T206 | README 状态提交与分支差距复核 | 已完成 | 已提交 README 当前状态并完成 feat/main/origin-main 差异检查 |
 
 ## 完成记录
 
@@ -520,3 +521,4 @@
 - 2026-04-02：完成 T203（Show Configuration 改为 YAML 只读查看，并通过回归验证）
 - 2026-04-02：完成 T204（按指令停止新功能开发，完成 README/TASKS 会话收口同步）
 - 2026-04-02：完成 T205（P1402 分支 rebase origin/main 并解决 PR 冲突，分支恢复为可合并状态）
+- 2026-04-02：完成 T206（提交 README 最新状态，并复核 feat 与本地/远程 main 差异）
