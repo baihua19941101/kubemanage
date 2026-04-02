@@ -202,6 +202,24 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 			}
 			return resourceSvc.NetworkPolicyNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_networkpolicy_yaml"), resourceHandler.UpdateNetworkPolicyYAML)
+		write.DELETE("/limitranges/:name", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.LimitRangeNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.LimitRangeNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("delete_limitrange"), resourceHandler.DeleteLimitRange)
+		write.DELETE("/resourcequotas/:name", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.ResourceQuotaNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.ResourceQuotaNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("delete_resourcequota"), resourceHandler.DeleteResourceQuota)
+		write.DELETE("/networkpolicies/:name", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.NetworkPolicyNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.NetworkPolicyNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("delete_networkpolicy"), resourceHandler.DeleteNetworkPolicy)
 	}
 
 	return r

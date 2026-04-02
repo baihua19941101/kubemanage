@@ -598,6 +598,20 @@ func (s *ResourceService) UpdateLimitRangeYAML(name, yaml string) error {
 	return updateResourceYAML(s.limitRangeYAML, "limitrange", name, yaml)
 }
 
+func (s *ResourceService) DeleteLimitRange(name string) error {
+	if _, exists := s.limitRangeYAML[name]; !exists {
+		return fmt.Errorf("limitrange not found: %s", name)
+	}
+	delete(s.limitRangeYAML, name)
+	for i, item := range s.limitRanges {
+		if item.Name == name {
+			s.limitRanges = append(s.limitRanges[:i], s.limitRanges[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (s *ResourceService) ListResourceQuotas() []ResourceQuotaItem {
 	return append([]ResourceQuotaItem(nil), s.resourceQuotas...)
 }
@@ -628,6 +642,20 @@ func (s *ResourceService) UpdateResourceQuotaYAML(name, yaml string) error {
 	return updateResourceYAML(s.resourceQuotaYAML, "resourcequota", name, yaml)
 }
 
+func (s *ResourceService) DeleteResourceQuota(name string) error {
+	if _, exists := s.resourceQuotaYAML[name]; !exists {
+		return fmt.Errorf("resourcequota not found: %s", name)
+	}
+	delete(s.resourceQuotaYAML, name)
+	for i, item := range s.resourceQuotas {
+		if item.Name == name {
+			s.resourceQuotas = append(s.resourceQuotas[:i], s.resourceQuotas[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
 func (s *ResourceService) ListNetworkPolicies() []NetworkPolicyItem {
 	return append([]NetworkPolicyItem(nil), s.networkPolicies...)
 }
@@ -656,6 +684,20 @@ func (s *ResourceService) NetworkPolicyNamespace(name string) (string, error) {
 
 func (s *ResourceService) UpdateNetworkPolicyYAML(name, yaml string) error {
 	return updateResourceYAML(s.networkPolicyYAML, "networkpolicy", name, yaml)
+}
+
+func (s *ResourceService) DeleteNetworkPolicy(name string) error {
+	if _, exists := s.networkPolicyYAML[name]; !exists {
+		return fmt.Errorf("networkpolicy not found: %s", name)
+	}
+	delete(s.networkPolicyYAML, name)
+	for i, item := range s.networkPolicies {
+		if item.Name == name {
+			s.networkPolicies = append(s.networkPolicies[:i], s.networkPolicies[i+1:]...)
+			return nil
+		}
+	}
+	return nil
 }
 
 func updateResourceYAML(target map[string]string, kind, name, yaml string) error {

@@ -1,4 +1,4 @@
-import { Alert, Button, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
@@ -62,6 +62,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
   const [yamlOpen, setYamlOpen] = useState(false);
   const [yamlTitle, setYamlTitle] = useState("");
   const [yamlText, setYamlText] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pageError, setPageError] = useState("");
 
   useEffect(() => {
@@ -156,6 +157,23 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
     await load();
   }
 
+  async function confirmDelete() {
+    if (!selectedName) return;
+    setPageError("");
+    const resp = await apiFetch(`/api/v1/${endpointPrefix}/${encodeURIComponent(selectedName)}`, {
+      method: "DELETE",
+      headers: {
+        "X-Action-Confirm": "CONFIRM"
+      }
+    });
+    if (!resp.ok) {
+      throw await parseApiError(resp, `删除 ${currentLabel} 失败`);
+    }
+    setDeleteOpen(false);
+    setSelectedName("");
+    await load();
+  }
+
   return (
     <>
       <PageScaffold
@@ -222,6 +240,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
               <Button size="small" component="a" href={`/api/v1/limitranges/${encodeURIComponent(selectedLimitRange.name)}/yaml/download`}>
                 下载 YAML
               </Button>
+              {canWorkloadWrite() && <Button size="small" color="error" onClick={() => setDeleteOpen(true)}>删除</Button>}
             </Stack>
           </Stack>
         )}
@@ -240,6 +259,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
               <Button size="small" component="a" href={`/api/v1/resourcequotas/${encodeURIComponent(selectedResourceQuota.name)}/yaml/download`}>
                 下载 YAML
               </Button>
+              {canWorkloadWrite() && <Button size="small" color="error" onClick={() => setDeleteOpen(true)}>删除</Button>}
             </Stack>
           </Stack>
         )}
@@ -258,6 +278,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
               <Button size="small" component="a" href={`/api/v1/networkpolicies/${encodeURIComponent(selectedNetworkPolicy.name)}/yaml/download`}>
                 下载 YAML
               </Button>
+              {canWorkloadWrite() && <Button size="small" color="error" onClick={() => setDeleteOpen(true)}>删除</Button>}
             </Stack>
           </Stack>
         )}
@@ -270,6 +291,29 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
         onClose={() => setYamlOpen(false)}
         onSave={canWorkloadWrite() ? saveYaml : undefined}
       />
+
+      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>删除确认</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">确认删除 {currentLabel}：{selectedName} ？该操作不可撤销。</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteOpen(false)}>取消</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={async () => {
+              try {
+                await confirmDelete();
+              } catch (err) {
+                setPageError(err instanceof Error ? err.message : `删除 ${currentLabel} 失败`);
+              }
+            }}
+          >
+            确认删除
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
