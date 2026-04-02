@@ -404,6 +404,192 @@ func (r *LiveResourceReader) GetNodeYAML(ctx context.Context, name string) (stri
 	return string(raw), nil
 }
 
+func (r *LiveResourceReader) ListLimitRanges(ctx context.Context) ([]LimitRangeItem, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.CoreV1().LimitRanges("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list limitranges failed: %w", err)
+	}
+	items := make([]LimitRangeItem, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, toLimitRangeItem(item))
+	}
+	return items, nil
+}
+
+func (r *LiveResourceReader) GetLimitRange(ctx context.Context, name string) (LimitRangeItem, error) {
+	items, err := r.ListLimitRanges(ctx)
+	if err != nil {
+		return LimitRangeItem{}, err
+	}
+	for _, item := range items {
+		if item.Name == name {
+			return item, nil
+		}
+	}
+	return LimitRangeItem{}, fmt.Errorf("limitrange not found: %s", name)
+}
+
+func (r *LiveResourceReader) GetLimitRangeYAML(ctx context.Context, name string) (string, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.CoreV1().LimitRanges("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("list limitranges failed: %w", err)
+	}
+	for _, item := range list.Items {
+		if item.Name != name {
+			continue
+		}
+		resource, getErr := clientset.CoreV1().LimitRanges(item.Namespace).Get(timeoutCtx, item.Name, metav1.GetOptions{})
+		if getErr != nil {
+			if apierrors.IsNotFound(getErr) {
+				return "", fmt.Errorf("limitrange not found: %s", name)
+			}
+			return "", fmt.Errorf("get limitrange failed: %w", getErr)
+		}
+		raw, marshalErr := yaml.Marshal(resource)
+		if marshalErr != nil {
+			return "", fmt.Errorf("marshal limitrange yaml failed: %w", marshalErr)
+		}
+		return string(raw), nil
+	}
+	return "", fmt.Errorf("limitrange not found: %s", name)
+}
+
+func (r *LiveResourceReader) ListResourceQuotas(ctx context.Context) ([]ResourceQuotaItem, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.CoreV1().ResourceQuotas("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list resourcequotas failed: %w", err)
+	}
+	items := make([]ResourceQuotaItem, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, toResourceQuotaItem(item))
+	}
+	return items, nil
+}
+
+func (r *LiveResourceReader) GetResourceQuota(ctx context.Context, name string) (ResourceQuotaItem, error) {
+	items, err := r.ListResourceQuotas(ctx)
+	if err != nil {
+		return ResourceQuotaItem{}, err
+	}
+	for _, item := range items {
+		if item.Name == name {
+			return item, nil
+		}
+	}
+	return ResourceQuotaItem{}, fmt.Errorf("resourcequota not found: %s", name)
+}
+
+func (r *LiveResourceReader) GetResourceQuotaYAML(ctx context.Context, name string) (string, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.CoreV1().ResourceQuotas("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("list resourcequotas failed: %w", err)
+	}
+	for _, item := range list.Items {
+		if item.Name != name {
+			continue
+		}
+		resource, getErr := clientset.CoreV1().ResourceQuotas(item.Namespace).Get(timeoutCtx, item.Name, metav1.GetOptions{})
+		if getErr != nil {
+			if apierrors.IsNotFound(getErr) {
+				return "", fmt.Errorf("resourcequota not found: %s", name)
+			}
+			return "", fmt.Errorf("get resourcequota failed: %w", getErr)
+		}
+		raw, marshalErr := yaml.Marshal(resource)
+		if marshalErr != nil {
+			return "", fmt.Errorf("marshal resourcequota yaml failed: %w", marshalErr)
+		}
+		return string(raw), nil
+	}
+	return "", fmt.Errorf("resourcequota not found: %s", name)
+}
+
+func (r *LiveResourceReader) ListNetworkPolicies(ctx context.Context) ([]NetworkPolicyItem, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.NetworkingV1().NetworkPolicies("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list networkpolicies failed: %w", err)
+	}
+	items := make([]NetworkPolicyItem, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, toNetworkPolicyItem(item))
+	}
+	return items, nil
+}
+
+func (r *LiveResourceReader) GetNetworkPolicy(ctx context.Context, name string) (NetworkPolicyItem, error) {
+	items, err := r.ListNetworkPolicies(ctx)
+	if err != nil {
+		return NetworkPolicyItem{}, err
+	}
+	for _, item := range items {
+		if item.Name == name {
+			return item, nil
+		}
+	}
+	return NetworkPolicyItem{}, fmt.Errorf("networkpolicy not found: %s", name)
+}
+
+func (r *LiveResourceReader) GetNetworkPolicyYAML(ctx context.Context, name string) (string, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.NetworkingV1().NetworkPolicies("").List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("list networkpolicies failed: %w", err)
+	}
+	for _, item := range list.Items {
+		if item.Name != name {
+			continue
+		}
+		resource, getErr := clientset.NetworkingV1().NetworkPolicies(item.Namespace).Get(timeoutCtx, item.Name, metav1.GetOptions{})
+		if getErr != nil {
+			if apierrors.IsNotFound(getErr) {
+				return "", fmt.Errorf("networkpolicy not found: %s", name)
+			}
+			return "", fmt.Errorf("get networkpolicy failed: %w", getErr)
+		}
+		raw, marshalErr := yaml.Marshal(resource)
+		if marshalErr != nil {
+			return "", fmt.Errorf("marshal networkpolicy yaml failed: %w", marshalErr)
+		}
+		return string(raw), nil
+	}
+	return "", fmt.Errorf("networkpolicy not found: %s", name)
+}
+
 func (r *LiveResourceReader) buildClientset(ctx context.Context) (*kubernetes.Clientset, error) {
 	if r.repo == nil {
 		return nil, ErrNoActiveClusterConnection
@@ -600,6 +786,102 @@ func toNodeItem(item corev1.Node) NodeItem {
 		LabelsCount: len(item.Labels),
 		TaintsCount: len(item.Spec.Taints),
 		Age:         humanAge(item.CreationTimestamp.Time),
+	}
+}
+
+func toLimitRangeItem(item corev1.LimitRange) LimitRangeItem {
+	defaultCPU := ""
+	defaultMemory := ""
+	if len(item.Spec.Limits) > 0 {
+		first := item.Spec.Limits[0]
+		if qty, ok := first.Default[corev1.ResourceCPU]; ok {
+			defaultCPU = qty.String()
+		}
+		if qty, ok := first.Default[corev1.ResourceMemory]; ok {
+			defaultMemory = qty.String()
+		}
+	}
+	return LimitRangeItem{
+		Name:          item.Name,
+		Namespace:     item.Namespace,
+		LimitsCount:   len(item.Spec.Limits),
+		DefaultCPU:    defaultCPU,
+		DefaultMemory: defaultMemory,
+		Age:           humanAge(item.CreationTimestamp.Time),
+	}
+}
+
+func toResourceQuotaItem(item corev1.ResourceQuota) ResourceQuotaItem {
+	hardPods := ""
+	usedPods := ""
+	hardCPU := ""
+	usedCPU := ""
+	hardMemory := ""
+	usedMemory := ""
+	hardPVCs := ""
+	usedPVCs := ""
+	if qty, ok := item.Status.Hard[corev1.ResourcePods]; ok {
+		hardPods = qty.String()
+	}
+	if qty, ok := item.Status.Used[corev1.ResourcePods]; ok {
+		usedPods = qty.String()
+	}
+	if qty, ok := item.Status.Hard[corev1.ResourceRequestsCPU]; ok {
+		hardCPU = qty.String()
+	}
+	if qty, ok := item.Status.Used[corev1.ResourceRequestsCPU]; ok {
+		usedCPU = qty.String()
+	}
+	if qty, ok := item.Status.Hard[corev1.ResourceRequestsMemory]; ok {
+		hardMemory = qty.String()
+	}
+	if qty, ok := item.Status.Used[corev1.ResourceRequestsMemory]; ok {
+		usedMemory = qty.String()
+	}
+	if qty, ok := item.Status.Hard[corev1.ResourcePersistentVolumeClaims]; ok {
+		hardPVCs = qty.String()
+	}
+	if qty, ok := item.Status.Used[corev1.ResourcePersistentVolumeClaims]; ok {
+		usedPVCs = qty.String()
+	}
+	return ResourceQuotaItem{
+		Name:       item.Name,
+		Namespace:  item.Namespace,
+		HardPods:   hardPods,
+		UsedPods:   usedPods,
+		HardCPU:    hardCPU,
+		UsedCPU:    usedCPU,
+		HardMemory: hardMemory,
+		UsedMemory: usedMemory,
+		HardPVCs:   hardPVCs,
+		UsedPVCs:   usedPVCs,
+		Age:        humanAge(item.CreationTimestamp.Time),
+	}
+}
+
+func toNetworkPolicyItem(item networkingv1.NetworkPolicy) NetworkPolicyItem {
+	policyTypes := make([]string, 0, len(item.Spec.PolicyTypes))
+	for _, policyType := range item.Spec.PolicyTypes {
+		policyTypes = append(policyTypes, string(policyType))
+	}
+	sort.Strings(policyTypes)
+	selector := "<all>"
+	if len(item.Spec.PodSelector.MatchLabels) > 0 {
+		labels := make([]string, 0, len(item.Spec.PodSelector.MatchLabels))
+		for key, value := range item.Spec.PodSelector.MatchLabels {
+			labels = append(labels, fmt.Sprintf("%s=%s", key, value))
+		}
+		sort.Strings(labels)
+		selector = strings.Join(labels, ",")
+	}
+	return NetworkPolicyItem{
+		Name:         item.Name,
+		Namespace:    item.Namespace,
+		PodSelector:  selector,
+		PolicyTypes:  strings.Join(policyTypes, ","),
+		IngressRules: len(item.Spec.Ingress),
+		EgressRules:  len(item.Spec.Egress),
+		Age:          humanAge(item.CreationTimestamp.Time),
 	}
 }
 

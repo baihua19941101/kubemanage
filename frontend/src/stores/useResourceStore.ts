@@ -88,6 +88,39 @@ type StorageClassItem = {
   age: string;
 };
 
+type LimitRangeItem = {
+  name: string;
+  namespace: string;
+  limitsCount: number;
+  defaultCpu: string;
+  defaultMemory: string;
+  age: string;
+};
+
+type ResourceQuotaItem = {
+  name: string;
+  namespace: string;
+  hardPods: string;
+  usedPods: string;
+  hardCpu: string;
+  usedCpu: string;
+  hardMemory: string;
+  usedMemory: string;
+  hardPvcs: string;
+  usedPvcs: string;
+  age: string;
+};
+
+type NetworkPolicyItem = {
+  name: string;
+  namespace: string;
+  podSelector: string;
+  policyTypes: string;
+  ingressRules: number;
+  egressRules: number;
+  age: string;
+};
+
 type ResourceState = {
   services: ServiceItem[];
   configMaps: ConfigMapItem[];
@@ -97,6 +130,9 @@ type ResourceState = {
   pvs: PVItem[];
   pvcs: PVCItem[];
   storageClasses: StorageClassItem[];
+  limitRanges: LimitRangeItem[];
+  resourceQuotas: ResourceQuotaItem[];
+  networkPolicies: NetworkPolicyItem[];
   loading: boolean;
   error: string;
   load: () => Promise<void>;
@@ -113,12 +149,15 @@ export const useResourceStore = create<ResourceState>((set) => ({
   pvs: [],
   pvcs: [],
   storageClasses: [],
+  limitRanges: [],
+  resourceQuotas: [],
+  networkPolicies: [],
   loading: false,
   error: "",
   load: async () => {
     set({ loading: true, error: "" });
     try {
-      const [sResp, cResp, secResp, ingResp, hpaResp, pvResp, pvcResp, scResp] = await Promise.all([
+      const [sResp, cResp, secResp, ingResp, hpaResp, pvResp, pvcResp, scResp, lrResp, rqResp, npResp] = await Promise.all([
         apiFetch("/api/v1/services"),
         apiFetch("/api/v1/configmaps"),
         apiFetch("/api/v1/secrets"),
@@ -126,9 +165,24 @@ export const useResourceStore = create<ResourceState>((set) => ({
         apiFetch("/api/v1/hpas"),
         apiFetch("/api/v1/pvs"),
         apiFetch("/api/v1/pvcs"),
-        apiFetch("/api/v1/storageclasses")
+        apiFetch("/api/v1/storageclasses"),
+        apiFetch("/api/v1/limitranges"),
+        apiFetch("/api/v1/resourcequotas"),
+        apiFetch("/api/v1/networkpolicies")
       ]);
-      if (!sResp.ok || !cResp.ok || !secResp.ok || !ingResp.ok || !hpaResp.ok || !pvResp.ok || !pvcResp.ok || !scResp.ok) {
+      if (
+        !sResp.ok ||
+        !cResp.ok ||
+        !secResp.ok ||
+        !ingResp.ok ||
+        !hpaResp.ok ||
+        !pvResp.ok ||
+        !pvcResp.ok ||
+        !scResp.ok ||
+        !lrResp.ok ||
+        !rqResp.ok ||
+        !npResp.ok
+      ) {
         throw new Error("加载服务与配置资源失败");
       }
       const sData = (await sResp.json()) as { items: ServiceItem[] };
@@ -139,6 +193,9 @@ export const useResourceStore = create<ResourceState>((set) => ({
       const pvData = (await pvResp.json()) as { items: PVItem[] };
       const pvcData = (await pvcResp.json()) as { items: PVCItem[] };
       const scData = (await scResp.json()) as { items: StorageClassItem[] };
+      const lrData = (await lrResp.json()) as { items: LimitRangeItem[] };
+      const rqData = (await rqResp.json()) as { items: ResourceQuotaItem[] };
+      const npData = (await npResp.json()) as { items: NetworkPolicyItem[] };
       set({
         services: sData.items,
         configMaps: cData.items,
@@ -147,7 +204,10 @@ export const useResourceStore = create<ResourceState>((set) => ({
         hpas: hpaData.items,
         pvs: pvData.items,
         pvcs: pvcData.items,
-        storageClasses: scData.items
+        storageClasses: scData.items,
+        limitRanges: lrData.items,
+        resourceQuotas: rqData.items,
+        networkPolicies: npData.items
       });
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "加载失败" });
