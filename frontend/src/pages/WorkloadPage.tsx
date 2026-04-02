@@ -84,6 +84,12 @@ type CronJobRow = {
   age: string;
 };
 
+type SaveMeta = {
+  lastSavedAt?: string;
+  lastRequestId?: string;
+  history: Array<{ at: string; requestId?: string }>;
+};
+
 export default function WorkloadPage({ initialMode = "deployments", showModeSwitcher = true }: Props) {
   const deployments = useWorkloadStore((s) => s.deployments);
   const pods = useWorkloadStore((s) => s.pods);
@@ -119,7 +125,9 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [yamlOpen, setYamlOpen] = useState(false);
   const [yamlText, setYamlText] = useState("");
   const [yamlError, setYamlError] = useState("");
+  const [yamlNotice, setYamlNotice] = useState("");
   const [yamlLoading, setYamlLoading] = useState(false);
+  const [yamlSaveMetaByResource, setYamlSaveMetaByResource] = useState<Record<string, SaveMeta>>({});
   const [logsOpen, setLogsOpen] = useState(false);
   const [rawLogsText, setRawLogsText] = useState("");
   const [logKeyword, setLogKeyword] = useState("");
@@ -141,6 +149,9 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     setMode(initialMode);
     setSelectedName("");
   }, [initialMode]);
+
+  const selectedResourceKey = selectedName ? `${mode}:${selectedName}` : "";
+  const selectedSaveMeta = selectedResourceKey ? yamlSaveMetaByResource[selectedResourceKey] : undefined;
 
   const lowerKeyword = keyword.toLowerCase().trim();
 
@@ -258,6 +269,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     if (!selectedName) return;
     setYamlLoading(true);
     setYamlError("");
+    setYamlNotice("");
     try {
       if (mode === "deployments") {
         setYamlText(await getDeploymentYAML(selectedName));
@@ -282,25 +294,43 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
   async function saveYaml(yaml: string) {
     if (!selectedName) return;
+    const saveKey = `${mode}:${selectedName}`;
     setYamlLoading(true);
     setYamlError("");
-    let ok = false;
+    setYamlNotice("");
+    let result: { ok: true; requestId?: string } | null = null;
     try {
       if (mode === "deployments") {
-        ok = await saveDeploymentYAML(selectedName, yaml);
+        result = await saveDeploymentYAML(selectedName, yaml);
       } else if (mode === "pods") {
-        ok = await savePodYAML(selectedName, yaml);
+        result = await savePodYAML(selectedName, yaml);
       } else if (mode === "statefulsets") {
-        ok = await saveStatefulSetYAML(selectedName, yaml);
+        result = await saveStatefulSetYAML(selectedName, yaml);
       } else if (mode === "daemonsets") {
-        ok = await saveDaemonSetYAML(selectedName, yaml);
+        result = await saveDaemonSetYAML(selectedName, yaml);
       } else if (mode === "jobs") {
-        ok = await saveJobYAML(selectedName, yaml);
+        result = await saveJobYAML(selectedName, yaml);
       } else {
-        ok = await saveCronJobYAML(selectedName, yaml);
+        result = await saveCronJobYAML(selectedName, yaml);
       }
-      if (ok) {
-        setYamlOpen(false);
+      if (result && result.ok) {
+        await load();
+        setYamlText(yaml);
+        const savedAt = new Date().toISOString();
+        const savedRequestId = result.requestId;
+        setYamlSaveMetaByResource((prev) => {
+          const current = prev[saveKey] || { history: [] };
+          return {
+            ...prev,
+            [saveKey]: {
+              lastSavedAt: savedAt,
+              lastRequestId: savedRequestId || undefined,
+              history: [{ at: savedAt, requestId: savedRequestId }, ...current.history].slice(0, 10)
+            }
+          };
+        });
+        const requestIdText = savedRequestId ? `（requestId: ${savedRequestId}）` : "";
+        setYamlNotice(`${currentLabel} YAML 保存成功${requestIdText}`);
       } else {
         setYamlError("保存 YAML 失败，请检查权限与请求参数");
       }
@@ -450,6 +480,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
       >
         {error && <Alert severity="error" sx={{ m: 1.5 }}>{error}</Alert>}
         {yamlError && <Alert severity="error" sx={{ m: 1.5 }}>{yamlError}</Alert>}
+        {yamlNotice && <Alert severity="success" sx={{ m: 1.5 }}>{yamlNotice}</Alert>}
 
         {mode === "deployments" && (
           <ResourceTable
@@ -595,6 +626,12 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
         yaml={yamlText}
         onClose={() => setYamlOpen(false)}
         onSave={!canWorkloadWrite() ? undefined : saveYaml}
+        saving={yamlLoading}
+        saveMeta={{
+          lastSavedAt: selectedSaveMeta?.lastSavedAt,
+          lastRequestId: selectedSaveMeta?.lastRequestId,
+          history: selectedSaveMeta?.history || []
+        }}
       />
 
       <Dialog open={logsOpen} onClose={() => setLogsOpen(false)} fullWidth maxWidth="md">

@@ -31,6 +31,12 @@ type Props = {
   yaml: string;
   onClose: () => void;
   onSave?: (yaml: string) => Promise<void> | void;
+  saving?: boolean;
+  saveMeta?: {
+    lastSavedAt?: string;
+    lastRequestId?: string;
+    history?: Array<{ at: string; requestId?: string }>;
+  };
 };
 
 type ViewMode = "editor" | "tree";
@@ -235,6 +241,12 @@ export default function YamlDialog(props: Props) {
     URL.revokeObjectURL(url);
   }
 
+  function formatLocalTime(iso: string) {
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) return iso;
+    return dt.toLocaleString();
+  }
+
   return (
     <Dialog open={props.open} onClose={props.onClose} fullWidth maxWidth="lg">
       <DialogTitle>{props.title}</DialogTitle>
@@ -346,15 +358,36 @@ export default function YamlDialog(props: Props) {
         )}
       </DialogContent>
       <DialogActions>
+        <Box sx={{ mr: "auto", minWidth: 320 }}>
+          {props.saveMeta?.lastSavedAt && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              最近保存：{formatLocalTime(props.saveMeta.lastSavedAt)}
+              {props.saveMeta.lastRequestId ? ` | requestId: ${props.saveMeta.lastRequestId}` : ""}
+            </Typography>
+          )}
+          {(props.saveMeta?.history || []).length > 0 && (
+            <Typography variant="caption" color="text.secondary" display="block">
+              历史：
+              {(props.saveMeta?.history || []).slice(0, 3).map((item, idx) => (
+                <span key={`${item.at}-${idx}`}>
+                  {idx > 0 ? " ; " : " "}
+                  {formatLocalTime(item.at)}
+                  {item.requestId ? ` (${item.requestId})` : ""}
+                </span>
+              ))}
+            </Typography>
+          )}
+        </Box>
         <Button onClick={props.onClose}>关闭</Button>
         {props.onSave && (
           <Button
             variant="contained"
+            disabled={props.saving}
             onClick={async () => {
               await props.onSave?.(value);
             }}
           >
-            保存 YAML
+            {props.saving ? "保存中..." : "保存 YAML"}
           </Button>
         )}
       </DialogActions>

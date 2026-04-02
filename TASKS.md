@@ -227,6 +227,10 @@
 | T186 | P1307-B：live reader 补齐 5 类 YAML 读写 | 已完成 | 已支持 Pod/StatefulSet/DaemonSet/Job/CronJob YAML 查看与保存 |
 | T187 | P1307-C：live 写入作用域解析对齐 | 已完成 | 已将 5 类写路由命名空间解析统一改为 live 优先 |
 | T188 | P1307-D：回归与验收 | 已完成 | 已通过 go test ./...、npm run build，并完成 README/TASKS 同步 |
+| T189 | Workload YAML 保存反馈增强 | 已完成 | 已补保存成功提示、失败精确错误（含 requestId）与保存后自动刷新列表 |
+| T190 | Workload YAML 保存后留在编辑态增强 | 已完成 | 保存后保留弹窗、显示 requestId 成功提示并刷新基线内容 |
+| T191 | YAML 保存元信息展示增强 | 已完成 | YamlDialog 已显示最近保存时间、最近 requestId 与最近保存历史 |
+| T192 | YAML 保存历史按资源隔离 | 已完成 | 已按“资源类型+名称”独立记录保存历史，切换资源不互相覆盖 |
 
 ## 完成记录
 
@@ -485,3 +489,7 @@
 - 2026-04-02：完成 T186（live reader 补齐 Pod/StatefulSet/DaemonSet/Job/CronJob YAML 读写）
 - 2026-04-02：完成 T187（5 类写路由作用域解析切换为 live 优先命名空间判定）
 - 2026-04-02：完成 T188（后端测试与前端构建通过，并完成 README/TASKS 同步）
+- 2026-04-02：完成 T189（Workload YAML 保存反馈增强：成功提示、错误透出、保存后自动刷新）
+- 2026-04-02：完成 T190（YAML 保存后保持编辑弹窗并展示 requestId 成功提示）
+- 2026-04-02：完成 T191（YAML 弹窗新增保存元信息展示：最近保存时间/requestId/历史）
+- 2026-04-02：完成 T192（YAML 保存历史改为按资源隔离记录，避免跨资源覆盖）
