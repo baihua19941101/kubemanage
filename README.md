@@ -397,6 +397,12 @@ P1001 节点管理冒烟脚本：
 bash scripts/p1001_node_management_smoke_test.sh
 ```
 
+P1101 Token 生命周期冒烟脚本：
+
+```bash
+bash scripts/p1101_token_lifecycle_smoke_test.sh
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -973,6 +979,30 @@ bash scripts/p1001_node_management_smoke_test.sh
 - 已完成开发：后端节点列表/详情/YAML 接口、前端节点管理页面与导航接入、节点冒烟脚本
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p1001_node_management_smoke_test.sh` 通过
 
+### P1101 计划（2026-04-02）
+
+#### 范围定义
+- 目标：推进“权限体系深化”第一版，优先交付 Token 生命周期管理闭环
+- 本轮聚焦：会话令牌列表、按 token 撤销、按用户批量撤销（登出全部）
+- 本轮不纳入：OAuth 回调链路、组织级目录同步、复杂多级继承策略
+
+#### 能力范围
+- 后端新增 token 生命周期接口（管理员可审计与撤销，用户可自助登出全部）
+- 前端权限页新增“会话令牌管理”区块（筛选、状态展示、撤销操作）
+- 保持现有 RBAC 与写操作确认机制，关键撤销动作要求确认头
+
+#### 开发拆分
+1. `P1101-A`：README/TASKS 计划与状态同步
+2. `P1101-B`：后端 token 生命周期接口
+3. `P1101-C`：前端会话令牌管理页面能力
+4. `P1101-D`：联调与验收（go test、frontend build、token 冒烟脚本）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：`feature/p1101-authz-lifecycle` 分支创建、数据库备份 `backups/kubemanage-20260402-091110-p1101.sql`
+- 已完成开发：后端 token 会话列表/撤销/批量撤销接口，前端权限页会话令牌管理区块，`p1101` 冒烟脚本
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p1101_token_lifecycle_smoke_test.sh` 通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -983,7 +1013,7 @@ bash scripts/p1001_node_management_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十阶段（P1001 已完成）`
-- 当前任务：`P1001：节点管理第一版能力（已完成）`
-- 当前状态：`节点列表/详情/YAML 闭环已交付并通过冒烟验收`
-- 下一任务：`与你确认下一优先级功能（Policy 管理 / 日志调试增强 / 权限体系深化）`
+- 当前阶段：`第十一阶段（P1101 已完成）`
+- 当前任务：`P1101：权限体系深化第一版（Token 生命周期）（已完成）`
+- 当前状态：`Token 生命周期管理闭环已交付并通过冒烟验收`
+- 下一任务：`与你确认下一优先级功能（Policy 管理 / 日志调试增强 / 用户组角色绑定深化）`

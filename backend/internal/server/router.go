@@ -121,6 +121,7 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		api.GET("/auth/providers/public", authHandler.ListPublicAuthProviders)
 		api.GET("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListUsers)
 		api.GET("/auth/providers", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListAuthProviders)
+		api.GET("/auth/tokens", middleware.RequirePermission(authSvc, service.PermUserManage), authHandler.ListTokenSessions)
 		api.GET("/audits", middleware.RequirePermission(authSvc, service.PermAuditRead), auditHandler.ListAudits)
 	}
 
@@ -132,7 +133,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.POST("/clusters/connections/test", middleware.RequirePermission(authSvc, service.PermClusterManage), clusterConnectionHandler.TestConnection)
 		write.POST("/clusters/connections/:id/activate", middleware.RequirePermission(authSvc, service.PermClusterManage), middleware.RequireActionConfirm("activate_cluster_connection"), clusterConnectionHandler.Activate)
 		write.POST("/auth/logout", authHandler.Logout)
+		write.POST("/auth/tokens/revoke-all", middleware.RequireActionConfirm("revoke_all_tokens"), authHandler.RevokeAllTokens)
 		write.POST("/auth/users", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("create_user"), authHandler.CreateUser)
+		write.POST("/auth/tokens/:id/revoke", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("revoke_token_session"), authHandler.RevokeTokenSession)
 		write.PATCH("/auth/users/:username/status", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_user_status"), authHandler.UpdateUserStatus)
 		write.PATCH("/auth/users/:username", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("update_user_profile"), authHandler.UpdateUserProfile)
 		write.POST("/auth/users/:username/reset-password", middleware.RequirePermission(authSvc, service.PermUserManage), middleware.RequireActionConfirm("reset_user_password"), authHandler.ResetUserPassword)

@@ -40,6 +40,17 @@ type UserItem = {
   updatedAt: string;
 };
 
+type TokenSessionItem = {
+  id: number;
+  userId: number;
+  username: string;
+  expiresAt: string;
+  revokedAt?: string;
+  createdAt: string;
+  status: string;
+  isActive: boolean;
+};
+
 export default function AuthAuditPage() {
   const role = useAuthStore((s) => s.role);
   const setRole = useAuthStore((s) => s.setRole);
@@ -53,6 +64,7 @@ export default function AuthAuditPage() {
   const [userError, setUserError] = useState("");
   const [loading, setLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [tokensLoading, setTokensLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
@@ -73,10 +85,14 @@ export default function AuthAuditPage() {
   const [editTarget, setEditTarget] = useState<UserItem | null>(null);
   const [editRoleValue, setEditRoleValue] = useState("readonly");
   const [editNamespacesValue, setEditNamespacesValue] = useState("dev");
+  const [tokens, setTokens] = useState<TokenSessionItem[]>([]);
+  const [tokenFilterUser, setTokenFilterUser] = useState("");
+  const [tokenFilterActiveOnly, setTokenFilterActiveOnly] = useState("true");
 
   useEffect(() => {
     void loadAudits();
     void loadUsers();
+    void loadTokens();
   }, [role]);
 
   async function loadAudits() {
@@ -126,6 +142,32 @@ export default function AuthAuditPage() {
       setUsers(data.items);
     } finally {
       setUsersLoading(false);
+    }
+  }
+
+  async function loadTokens() {
+    setUserError("");
+    setTokens([]);
+    if (!canUserManage()) {
+      return;
+    }
+    setTokensLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (tokenFilterUser.trim()) params.set("username", tokenFilterUser.trim());
+      if (tokenFilterActiveOnly === "true") params.set("activeOnly", "true");
+      params.set("limit", "100");
+      const query = params.toString();
+      const resp = await apiFetch(`/api/v1/auth/tokens${query ? `?${query}` : ""}`);
+      if (!resp.ok) {
+        const err = await parseApiError(resp, "加载会话令牌失败");
+        setUserError(err.message);
+        return;
+      }
+      const data = (await resp.json()) as { items: TokenSessionItem[] };
+      setTokens(data.items);
+    } finally {
+      setTokensLoading(false);
     }
   }
 
@@ -266,6 +308,48 @@ export default function AuthAuditPage() {
     }
   }
 
+  async function revokeTokenSession(item: TokenSessionItem) {
+    setUserError("");
+    try {
+      const resp = await apiFetch(`/api/v1/auth/tokens/${item.id}/revoke`, {
+        method: "POST",
+        headers: {
+          "X-Action-Confirm": "CONFIRM"
+        }
+      });
+      if (!resp.ok) {
+        const err = await parseApiError(resp, "撤销会话令牌失败");
+        setUserError(err.message);
+        return;
+      }
+      await loadTokens();
+    } catch (err) {
+      setUserError(err instanceof Error ? err.message : "撤销会话令牌失败");
+    }
+  }
+
+  async function revokeAllByUsername(username: string) {
+    setUserError("");
+    try {
+      const resp = await apiFetch("/api/v1/auth/tokens/revoke-all", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Action-Confirm": "CONFIRM"
+        },
+        body: JSON.stringify({ username })
+      });
+      if (!resp.ok) {
+        const err = await parseApiError(resp, "批量撤销会话失败");
+        setUserError(err.message);
+        return;
+      }
+      await loadTokens();
+    } catch (err) {
+      setUserError(err instanceof Error ? err.message : "批量撤销会话失败");
+    }
+  }
+
   const auditColumns = useMemo(
     () => [
       { key: "time", header: "时间", render: (r: AuditItem) => r.time },
@@ -308,6 +392,32 @@ export default function AuthAuditPage() {
               setResetPasswordValue("");
             }}>
               重置密码
+            </Button>
+          </Stack>
+        )
+      }
+    ],
+    []
+  );
+
+  const tokenColumns = useMemo(
+    () => [
+      { key: "id", header: "ID", render: (r: TokenSessionItem) => r.id },
+      { key: "user", header: "用户", render: (r: TokenSessionItem) => r.username },
+      { key: "status", header: "状态", render: (r: TokenSessionItem) => r.status },
+      { key: "created", header: "创建时间", render: (r: TokenSessionItem) => r.createdAt },
+      { key: "expires", header: "过期时间", render: (r: TokenSessionItem) => r.expiresAt },
+      { key: "revoked", header: "撤销时间", render: (r: TokenSessionItem) => r.revokedAt || "-" },
+      {
+        key: "actions",
+        header: "操作",
+        render: (r: TokenSessionItem) => (
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" disabled={!r.isActive} onClick={() => void revokeTokenSession(r)}>
+              撤销令牌
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => void revokeAllByUsername(r.username)}>
+              撤销该用户全部
             </Button>
           </Stack>
         )
@@ -392,6 +502,42 @@ export default function AuthAuditPage() {
           rows={users}
           rowKey={(r) => String(r.id)}
           columns={userColumns}
+        />
+
+        <Box sx={{ mt: 2, px: 1.5, py: 1, borderTop: "1px solid #d7e1ef" }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>会话令牌管理</Typography>
+          <Typography variant="body2" color="text.secondary">支持会话令牌列表筛选、按 token 撤销、按用户批量撤销。</Typography>
+        </Box>
+        {canUserManage() && (
+          <Stack direction="row" spacing={1.5} sx={{ px: 1.5, pb: 1.5 }} useFlexGap flexWrap="wrap">
+            <TextField size="small" label="用户名" value={tokenFilterUser} onChange={(e) => setTokenFilterUser(e.target.value)} sx={{ width: 180 }} />
+            <FormControl size="small" sx={{ width: 160 }}>
+              <InputLabel id="token-active-label">会话状态</InputLabel>
+              <Select
+                labelId="token-active-label"
+                value={tokenFilterActiveOnly}
+                label="会话状态"
+                onChange={(e) => setTokenFilterActiveOnly(e.target.value)}
+              >
+                <MenuItem value="true">仅活跃</MenuItem>
+                <MenuItem value="false">全部</MenuItem>
+              </Select>
+            </FormControl>
+            <Button variant="contained" onClick={() => void loadTokens()}>筛选</Button>
+            <Button variant="outlined" onClick={() => {
+              setTokenFilterUser("");
+              setTokenFilterActiveOnly("true");
+              void loadTokens();
+            }}>
+              清空
+            </Button>
+          </Stack>
+        )}
+        <ResourceTable
+          loading={tokensLoading}
+          rows={tokens}
+          rowKey={(r) => String(r.id)}
+          columns={tokenColumns}
         />
 
         <Box sx={{ mt: 2, px: 1.5, py: 1, borderTop: "1px solid #d7e1ef" }}>

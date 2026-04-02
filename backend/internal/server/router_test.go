@@ -487,6 +487,20 @@ func TestAuthUserManagement(t *testing.T) {
 		t.Fatalf("admin list providers should return 503 when auth db disabled: %d body=%s", listProvidersW.Code, listProvidersW.Body.String())
 	}
 
+	listTokensReq := requestWithRole(http.MethodGet, "/api/v1/auth/tokens?activeOnly=true&limit=20", "", "admin")
+	listTokensW := httptest.NewRecorder()
+	r.ServeHTTP(listTokensW, listTokensReq)
+	if listTokensW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("admin list token sessions should return 503 when auth db disabled: %d body=%s", listTokensW.Code, listTokensW.Body.String())
+	}
+
+	viewerTokensReq := requestWithRole(http.MethodGet, "/api/v1/auth/tokens", "", "viewer")
+	viewerTokensW := httptest.NewRecorder()
+	r.ServeHTTP(viewerTokensW, viewerTokensReq)
+	if viewerTokensW.Code != http.StatusForbidden {
+		t.Fatalf("viewer list token sessions should be forbidden: %d body=%s", viewerTokensW.Code, viewerTokensW.Body.String())
+	}
+
 	viewerListReq := requestWithRole(http.MethodGet, "/api/v1/auth/users", "", "viewer")
 	viewerListW := httptest.NewRecorder()
 	r.ServeHTTP(viewerListW, viewerListReq)
@@ -506,6 +520,27 @@ func TestAuthUserManagement(t *testing.T) {
 	r.ServeHTTP(updateProfileW, updateProfileReq)
 	if updateProfileW.Code != http.StatusServiceUnavailable {
 		t.Fatalf("update user profile should return 503 when auth db disabled: %d body=%s", updateProfileW.Code, updateProfileW.Body.String())
+	}
+
+	revokeTokenReq := requestWithRole(http.MethodPost, "/api/v1/auth/tokens/1/revoke", "", "admin")
+	revokeTokenW := httptest.NewRecorder()
+	r.ServeHTTP(revokeTokenW, revokeTokenReq)
+	if revokeTokenW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("revoke token should return 503 when auth db disabled: %d body=%s", revokeTokenW.Code, revokeTokenW.Body.String())
+	}
+
+	revokeAllReq := requestWithRole(http.MethodPost, "/api/v1/auth/tokens/revoke-all", `{"username":"p601-user"}`, "admin")
+	revokeAllW := httptest.NewRecorder()
+	r.ServeHTTP(revokeAllW, revokeAllReq)
+	if revokeAllW.Code != http.StatusServiceUnavailable {
+		t.Fatalf("revoke all tokens should return 503 when auth db disabled: %d body=%s", revokeAllW.Code, revokeAllW.Body.String())
+	}
+
+	viewerRevokeAllReq := requestWithRole(http.MethodPost, "/api/v1/auth/tokens/revoke-all", `{"username":"admin"}`, "viewer")
+	viewerRevokeAllW := httptest.NewRecorder()
+	r.ServeHTTP(viewerRevokeAllW, viewerRevokeAllReq)
+	if viewerRevokeAllW.Code != http.StatusForbidden {
+		t.Fatalf("viewer revoke other's tokens should be forbidden: %d body=%s", viewerRevokeAllW.Code, viewerRevokeAllW.Body.String())
 	}
 
 	resetReq := requestWithRole(http.MethodPost, "/api/v1/auth/users/p601-user/reset-password", `{"password":"654321"}`, "admin")

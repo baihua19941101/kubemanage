@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第十阶段（P1001 已完成）
+- 阶段：第十一阶段（P1101 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -46,6 +46,7 @@
 | P801 | 第八阶段任务1：认证源管理基础能力（local/ldap） | 已完成 | 已完成认证源模型、管理接口、登录 provider 语义与前端登录源选择 |
 | P901 | 第九阶段任务1：真实 LDAP Bind 最小闭环 | 已完成 | 已完成 provider=ldap 真实登录链路、账号映射策略与验收脚本 |
 | P1001 | 第十阶段任务1：节点管理第一版能力 | 已完成 | 已完成节点列表/详情/YAML 读能力、前端节点页面与冒烟验收 |
+| P1101 | 第十一阶段任务1：权限体系深化第一版（Token 生命周期） | 已完成 | 已完成 token 会话列表、撤销与登出全部能力并接入前端权限页 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -168,6 +169,11 @@
 | T132 | P1001-B：后端节点读链路实现 | 已完成 | 已新增 nodes 列表/详情/YAML 查看下载接口与 live 适配 |
 | T133 | P1001-C：前端节点管理页面与路由接入 | 已完成 | 已新增 Node 页面、Cluster 菜单入口、详情抽屉与 YAML 查看下载 |
 | T134 | P1001-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p1001_node_management_smoke_test.sh |
+| T135 | P1101 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p1101-authz-lifecycle，已备份 backups/kubemanage-20260402-091110-p1101.sql |
+| T136 | P1101-A：README/TASKS 计划与状态同步 | 已完成 | 已同步第十一阶段权限体系深化范围、拆分与当前状态（进行中） |
+| T137 | P1101-B：后端 token 生命周期接口 | 已完成 | 已新增 token 会话列表、按 token 撤销、按用户批量撤销接口 |
+| T138 | P1101-C：前端会话令牌管理能力 | 已完成 | 已在权限页新增 token 列表筛选、撤销与批量撤销操作 |
+| T139 | P1101-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p1101_token_lifecycle_smoke_test.sh |
 
 ## 完成记录
 
@@ -367,3 +373,9 @@
 - 2026-04-02：完成 T133（前端新增 Node 页面并接入 Cluster 菜单与路由）
 - 2026-04-02：完成 T134（go test ./...、npm run build、scripts/p1001_node_management_smoke_test.sh 通过）
 - 2026-04-02：完成 P1001（节点管理第一版能力交付并验收通过）
+- 2026-04-02：完成 T135（创建 feature/p1101-authz-lifecycle，并完成数据库备份 backups/kubemanage-20260402-091110-p1101.sql）
+- 2026-04-02：完成 T136（同步 README/TASKS：第十一阶段权限体系深化范围、拆分与状态）
+- 2026-04-02：完成 T137（后端新增 /auth/tokens 列表、/auth/tokens/:id/revoke、/auth/tokens/revoke-all 接口）
+- 2026-04-02：完成 T138（前端 AuthAuditPage 新增会话令牌管理区块与筛选/撤销能力）
+- 2026-04-02：完成 T139（go test ./...、npm run build、scripts/p1101_token_lifecycle_smoke_test.sh 通过）
+- 2026-04-02：完成 P1101（权限体系深化第一版 Token 生命周期交付并验收通过）
