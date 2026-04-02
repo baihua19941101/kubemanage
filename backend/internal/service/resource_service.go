@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"strings"
+
+	"sigs.k8s.io/yaml"
 )
 
 type ServiceItem struct {
@@ -598,6 +600,29 @@ func (s *ResourceService) UpdateLimitRangeYAML(name, yaml string) error {
 	return updateResourceYAML(s.limitRangeYAML, "limitrange", name, yaml)
 }
 
+func (s *ResourceService) CreateLimitRange(namespace, rawYAML string) error {
+	name, err := extractMetadataNameFromYAML(rawYAML)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	if _, exists := s.limitRangeYAML[name]; exists {
+		return fmt.Errorf("limitrange already exists: %s", name)
+	}
+	s.limitRangeYAML[name] = rawYAML
+	s.limitRanges = append(s.limitRanges, LimitRangeItem{
+		Name:          name,
+		Namespace:     strings.TrimSpace(namespace),
+		LimitsCount:   1,
+		DefaultCPU:    "",
+		DefaultMemory: "",
+		Age:           "0m",
+	})
+	return nil
+}
+
 func (s *ResourceService) DeleteLimitRange(name string) error {
 	if _, exists := s.limitRangeYAML[name]; !exists {
 		return fmt.Errorf("limitrange not found: %s", name)
@@ -640,6 +665,34 @@ func (s *ResourceService) ResourceQuotaNamespace(name string) (string, error) {
 
 func (s *ResourceService) UpdateResourceQuotaYAML(name, yaml string) error {
 	return updateResourceYAML(s.resourceQuotaYAML, "resourcequota", name, yaml)
+}
+
+func (s *ResourceService) CreateResourceQuota(namespace, rawYAML string) error {
+	name, err := extractMetadataNameFromYAML(rawYAML)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	if _, exists := s.resourceQuotaYAML[name]; exists {
+		return fmt.Errorf("resourcequota already exists: %s", name)
+	}
+	s.resourceQuotaYAML[name] = rawYAML
+	s.resourceQuotas = append(s.resourceQuotas, ResourceQuotaItem{
+		Name:       name,
+		Namespace:  strings.TrimSpace(namespace),
+		HardPods:   "",
+		UsedPods:   "",
+		HardCPU:    "",
+		UsedCPU:    "",
+		HardMemory: "",
+		UsedMemory: "",
+		HardPVCs:   "",
+		UsedPVCs:   "",
+		Age:        "0m",
+	})
+	return nil
 }
 
 func (s *ResourceService) DeleteResourceQuota(name string) error {
@@ -686,6 +739,30 @@ func (s *ResourceService) UpdateNetworkPolicyYAML(name, yaml string) error {
 	return updateResourceYAML(s.networkPolicyYAML, "networkpolicy", name, yaml)
 }
 
+func (s *ResourceService) CreateNetworkPolicy(namespace, rawYAML string) error {
+	name, err := extractMetadataNameFromYAML(rawYAML)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	if _, exists := s.networkPolicyYAML[name]; exists {
+		return fmt.Errorf("networkpolicy already exists: %s", name)
+	}
+	s.networkPolicyYAML[name] = rawYAML
+	s.networkPolicies = append(s.networkPolicies, NetworkPolicyItem{
+		Name:         name,
+		Namespace:    strings.TrimSpace(namespace),
+		PodSelector:  "<all>",
+		PolicyTypes:  "Ingress",
+		IngressRules: 0,
+		EgressRules:  0,
+		Age:          "0m",
+	})
+	return nil
+}
+
 func (s *ResourceService) DeleteNetworkPolicy(name string) error {
 	if _, exists := s.networkPolicyYAML[name]; !exists {
 		return fmt.Errorf("networkpolicy not found: %s", name)
@@ -709,6 +786,26 @@ func updateResourceYAML(target map[string]string, kind, name, yaml string) error
 	}
 	target[name] = yaml
 	return nil
+}
+
+func extractMetadataNameFromYAML(raw string) (string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return "", fmt.Errorf("yaml content is empty")
+	}
+	var obj map[string]any
+	if err := yaml.Unmarshal([]byte(raw), &obj); err != nil {
+		return "", fmt.Errorf("invalid yaml: %w", err)
+	}
+	metadata, ok := obj["metadata"].(map[string]any)
+	if !ok {
+		return "", fmt.Errorf("yaml metadata.name is required")
+	}
+	name, _ := metadata["name"].(string)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("yaml metadata.name is required")
+	}
+	return name, nil
 }
 
 func maskSecret(value string) string {

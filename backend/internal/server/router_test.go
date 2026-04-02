@@ -516,6 +516,44 @@ func TestResourceEndpoints(t *testing.T) {
 		t.Fatalf("download networkpolicy yaml missing content-disposition header")
 	}
 
+	createLimitRangeDenyReq := requestWithRole(http.MethodPost, "/api/v1/limitranges", `{"namespace":"default","yaml":"apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: limitrange-default-new\n  namespace: default\n"}`, "operator")
+	createLimitRangeDenyW := httptest.NewRecorder()
+	r.ServeHTTP(createLimitRangeDenyW, createLimitRangeDenyReq)
+	if createLimitRangeDenyW.Code != http.StatusForbidden {
+		t.Fatalf("operator create default limitrange should be forbidden: %d body=%s", createLimitRangeDenyW.Code, createLimitRangeDenyW.Body.String())
+	}
+
+	createLimitRangeDevReq := requestWithRole(http.MethodPost, "/api/v1/limitranges", `{"namespace":"dev","yaml":"apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: limitrange-dev-new\n  namespace: dev\n"}`, "operator")
+	createLimitRangeDevW := httptest.NewRecorder()
+	r.ServeHTTP(createLimitRangeDevW, createLimitRangeDevReq)
+	if createLimitRangeDevW.Code != http.StatusCreated {
+		t.Fatalf("operator create dev limitrange should pass: %d body=%s", createLimitRangeDevW.Code, createLimitRangeDevW.Body.String())
+	}
+
+	createRQDevReq := requestWithRole(http.MethodPost, "/api/v1/resourcequotas", `{"namespace":"dev","yaml":"apiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: resourcequota-dev-new\n  namespace: dev\n"}`, "operator")
+	createRQDevW := httptest.NewRecorder()
+	r.ServeHTTP(createRQDevW, createRQDevReq)
+	if createRQDevW.Code != http.StatusCreated {
+		t.Fatalf("operator create dev resourcequota should pass: %d body=%s", createRQDevW.Code, createRQDevW.Body.String())
+	}
+
+	createNPDevReq := requestWithRole(http.MethodPost, "/api/v1/networkpolicies", `{"namespace":"dev","yaml":"apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: networkpolicy-dev-new\n  namespace: dev\n"}`, "operator")
+	createNPDevW := httptest.NewRecorder()
+	r.ServeHTTP(createNPDevW, createNPDevReq)
+	if createNPDevW.Code != http.StatusCreated {
+		t.Fatalf("operator create dev networkpolicy should pass: %d body=%s", createNPDevW.Code, createNPDevW.Body.String())
+	}
+
+	createWithoutConfirmReq, _ := http.NewRequest(http.MethodPost, "/api/v1/networkpolicies", bytes.NewBufferString(`{"namespace":"dev","yaml":"apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: no-confirm\n  namespace: dev\n"}`))
+	createWithoutConfirmReq.Header.Set("Content-Type", "application/json")
+	createWithoutConfirmReq.Header.Set("X-User-Role", "admin")
+	createWithoutConfirmReq.Header.Set("X-User", "tester")
+	createWithoutConfirmW := httptest.NewRecorder()
+	r.ServeHTTP(createWithoutConfirmW, createWithoutConfirmReq)
+	if createWithoutConfirmW.Code != http.StatusPreconditionRequired {
+		t.Fatalf("create without confirm should be 428: %d body=%s", createWithoutConfirmW.Code, createWithoutConfirmW.Body.String())
+	}
+
 	updateLimitRangeDenyReq := requestWithRole(http.MethodPut, "/api/v1/limitranges/compute-defaults/yaml", `{"yaml":"apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: compute-defaults\n  namespace: default\n"}`, "operator")
 	updateLimitRangeDenyW := httptest.NewRecorder()
 	r.ServeHTTP(updateLimitRangeDenyW, updateLimitRangeDenyReq)

@@ -1,4 +1,4 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
@@ -47,6 +47,10 @@ type NetworkPolicyItem = {
   age: string;
 };
 
+type NamespaceItem = {
+  name: string;
+};
+
 export default function PolicyPage({ initialMode = "limitranges" }: Props) {
   const limitRanges = useResourceStore((s) => s.limitRanges);
   const resourceQuotas = useResourceStore((s) => s.resourceQuotas);
@@ -62,12 +66,34 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
   const [yamlOpen, setYamlOpen] = useState(false);
   const [yamlTitle, setYamlTitle] = useState("");
   const [yamlText, setYamlText] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createNamespace, setCreateNamespace] = useState("dev");
+  const [createYaml, setCreateYaml] = useState("");
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  const [namespacesLoading, setNamespacesLoading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pageError, setPageError] = useState("");
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void (async () => {
+      setNamespacesLoading(true);
+      try {
+        const resp = await apiFetch("/api/v1/namespaces");
+        if (!resp.ok) {
+          return;
+        }
+        const data = (await resp.json()) as { items: NamespaceItem[] };
+        const values = Array.from(new Set((data.items || []).map((item) => item.name).filter((name) => name.trim().length > 0)));
+        setNamespaces(values.sort((a, b) => a.localeCompare(b)));
+      } finally {
+        setNamespacesLoading(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     setMode(initialMode);
@@ -174,19 +200,103 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
     await load();
   }
 
+  function createTemplate(targetMode: PolicyMode, namespace: string) {
+    if (targetMode === "limitranges") {
+      return `apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ${namespace}-limitrange-new
+  namespace: ${namespace}
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+`;
+    }
+    if (targetMode === "resourcequotas") {
+      return `apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ${namespace}-resourcequota-new
+  namespace: ${namespace}
+spec:
+  hard:
+    pods: "20"
+    requests.cpu: "4"
+    requests.memory: 8Gi
+`;
+    }
+    return `apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ${namespace}-networkpolicy-new
+  namespace: ${namespace}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+`;
+  }
+
+  function openCreateDialog() {
+    let ns = createNamespace.trim();
+    if (!ns || (namespaces.length > 0 && !namespaces.includes(ns))) {
+      ns = namespaces[0] ?? "default";
+    }
+    setCreateNamespace(ns);
+    setCreateYaml(createTemplate(mode, ns));
+    setCreateOpen(true);
+  }
+
+  async function confirmCreate() {
+    const namespace = createNamespace.trim();
+    if (!namespace) {
+      setPageError("namespace is required");
+      return;
+    }
+    const resp = await apiFetch(`/api/v1/${endpointPrefix}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
+      body: JSON.stringify({
+        namespace,
+        yaml: createYaml
+      })
+    });
+    if (!resp.ok) {
+      throw await parseApiError(resp, `创建 ${currentLabel} 失败`);
+    }
+    setCreateOpen(false);
+    await load();
+  }
+
   return (
     <>
       <PageScaffold
         title="Policy 管理"
         description="按资源管理 LimitRange / ResourceQuota / NetworkPolicy，支持详情与 YAML 查看下载"
         toolbar={
-          <TextField
-            size="small"
-            label="按名称筛选"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            sx={{ width: 280 }}
-          />
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label="按名称筛选"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              sx={{ width: 280 }}
+            />
+            {canWorkloadWrite() && (
+              <Button variant="contained" onClick={openCreateDialog}>
+                Create
+              </Button>
+            )}
+          </Stack>
         }
       >
         {(storeError || pageError) && <Alert severity="error" sx={{ m: 1.5 }}>{pageError || storeError}</Alert>}
@@ -311,6 +421,60 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
             }}
           >
             确认删除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>新建 {currentLabel}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            {namespaces.length > 0 ? (
+              <TextField
+                select
+                size="small"
+                label="命名空间"
+                value={createNamespace}
+                onChange={(e) => setCreateNamespace(e.target.value)}
+                helperText={namespacesLoading ? "命名空间加载中..." : undefined}
+              >
+                {namespaces.map((ns) => (
+                  <MenuItem key={ns} value={ns}>
+                    {ns}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <TextField
+                size="small"
+                label="命名空间"
+                value={createNamespace}
+                onChange={(e) => setCreateNamespace(e.target.value)}
+                helperText={namespacesLoading ? "命名空间加载中..." : "未获取到命名空间列表，可手动输入"}
+              />
+            )}
+            <TextField
+              multiline
+              minRows={14}
+              label="YAML"
+              value={createYaml}
+              onChange={(e) => setCreateYaml(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreateOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                await confirmCreate();
+              } catch (err) {
+                setPageError(err instanceof Error ? err.message : `创建 ${currentLabel} 失败`);
+              }
+            }}
+          >
+            确认创建
           </Button>
         </DialogActions>
       </Dialog>

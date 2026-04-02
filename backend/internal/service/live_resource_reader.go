@@ -707,6 +707,102 @@ func (r *LiveResourceReader) UpdateNetworkPolicyYAML(ctx context.Context, name, 
 	return nil
 }
 
+func (r *LiveResourceReader) CreateLimitRangeYAML(ctx context.Context, namespace, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	var object corev1.LimitRange
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	if strings.TrimSpace(object.Name) == "" {
+		return fmt.Errorf("yaml metadata.name is required")
+	}
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = strings.TrimSpace(namespace)
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.CoreV1().LimitRanges(object.Namespace).Create(timeoutCtx, &object, metav1.CreateOptions{}); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("limitrange already exists: %s", object.Name)
+		}
+		return fmt.Errorf("create limitrange failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) CreateResourceQuotaYAML(ctx context.Context, namespace, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	var object corev1.ResourceQuota
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	if strings.TrimSpace(object.Name) == "" {
+		return fmt.Errorf("yaml metadata.name is required")
+	}
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = strings.TrimSpace(namespace)
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.CoreV1().ResourceQuotas(object.Namespace).Create(timeoutCtx, &object, metav1.CreateOptions{}); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("resourcequota already exists: %s", object.Name)
+		}
+		return fmt.Errorf("create resourcequota failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) CreateNetworkPolicyYAML(ctx context.Context, namespace, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Errorf("namespace is required")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	var object networkingv1.NetworkPolicy
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	if strings.TrimSpace(object.Name) == "" {
+		return fmt.Errorf("yaml metadata.name is required")
+	}
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = strings.TrimSpace(namespace)
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.NetworkingV1().NetworkPolicies(object.Namespace).Create(timeoutCtx, &object, metav1.CreateOptions{}); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("networkpolicy already exists: %s", object.Name)
+		}
+		return fmt.Errorf("create networkpolicy failed: %w", err)
+	}
+	return nil
+}
+
 func (r *LiveResourceReader) DeleteLimitRange(ctx context.Context, name string) error {
 	clientset, err := r.buildClientset(ctx)
 	if err != nil {
