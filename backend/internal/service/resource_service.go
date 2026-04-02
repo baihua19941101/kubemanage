@@ -1,5 +1,10 @@
 package service
 
+import (
+	"fmt"
+	"strings"
+)
+
 type ServiceItem struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
@@ -581,6 +586,18 @@ func (s *ResourceService) GetLimitRangeYAML(name string) (string, bool) {
 	return yaml, ok
 }
 
+func (s *ResourceService) LimitRangeNamespace(name string) (string, error) {
+	item, ok := s.GetLimitRange(name)
+	if !ok {
+		return "", fmt.Errorf("limitrange not found: %s", name)
+	}
+	return item.Namespace, nil
+}
+
+func (s *ResourceService) UpdateLimitRangeYAML(name, yaml string) error {
+	return updateResourceYAML(s.limitRangeYAML, "limitrange", name, yaml)
+}
+
 func (s *ResourceService) ListResourceQuotas() []ResourceQuotaItem {
 	return append([]ResourceQuotaItem(nil), s.resourceQuotas...)
 }
@@ -599,6 +616,18 @@ func (s *ResourceService) GetResourceQuotaYAML(name string) (string, bool) {
 	return yaml, ok
 }
 
+func (s *ResourceService) ResourceQuotaNamespace(name string) (string, error) {
+	item, ok := s.GetResourceQuota(name)
+	if !ok {
+		return "", fmt.Errorf("resourcequota not found: %s", name)
+	}
+	return item.Namespace, nil
+}
+
+func (s *ResourceService) UpdateResourceQuotaYAML(name, yaml string) error {
+	return updateResourceYAML(s.resourceQuotaYAML, "resourcequota", name, yaml)
+}
+
 func (s *ResourceService) ListNetworkPolicies() []NetworkPolicyItem {
 	return append([]NetworkPolicyItem(nil), s.networkPolicies...)
 }
@@ -615,6 +644,29 @@ func (s *ResourceService) GetNetworkPolicy(name string) (NetworkPolicyItem, bool
 func (s *ResourceService) GetNetworkPolicyYAML(name string) (string, bool) {
 	yaml, ok := s.networkPolicyYAML[name]
 	return yaml, ok
+}
+
+func (s *ResourceService) NetworkPolicyNamespace(name string) (string, error) {
+	item, ok := s.GetNetworkPolicy(name)
+	if !ok {
+		return "", fmt.Errorf("networkpolicy not found: %s", name)
+	}
+	return item.Namespace, nil
+}
+
+func (s *ResourceService) UpdateNetworkPolicyYAML(name, yaml string) error {
+	return updateResourceYAML(s.networkPolicyYAML, "networkpolicy", name, yaml)
+}
+
+func updateResourceYAML(target map[string]string, kind, name, yaml string) error {
+	if strings.TrimSpace(yaml) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	if _, exists := target[name]; !exists {
+		return fmt.Errorf("%s not found: %s", kind, name)
+	}
+	target[name] = yaml
+	return nil
 }
 
 func maskSecret(value string) string {

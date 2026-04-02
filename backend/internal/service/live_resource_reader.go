@@ -590,6 +590,123 @@ func (r *LiveResourceReader) GetNetworkPolicyYAML(ctx context.Context, name stri
 	return "", fmt.Errorf("networkpolicy not found: %s", name)
 }
 
+func (r *LiveResourceReader) LimitRangeNamespace(ctx context.Context, name string) (string, error) {
+	item, err := r.GetLimitRange(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return item.Namespace, nil
+}
+
+func (r *LiveResourceReader) ResourceQuotaNamespace(ctx context.Context, name string) (string, error) {
+	item, err := r.GetResourceQuota(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return item.Namespace, nil
+}
+
+func (r *LiveResourceReader) NetworkPolicyNamespace(ctx context.Context, name string) (string, error) {
+	item, err := r.GetNetworkPolicy(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return item.Namespace, nil
+}
+
+func (r *LiveResourceReader) UpdateLimitRangeYAML(ctx context.Context, name, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.LimitRangeNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	var object corev1.LimitRange
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	object.Name = name
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = namespace
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.CoreV1().LimitRanges(object.Namespace).Update(timeoutCtx, &object, metav1.UpdateOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("limitrange not found: %s", name)
+		}
+		return fmt.Errorf("update limitrange failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) UpdateResourceQuotaYAML(ctx context.Context, name, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.ResourceQuotaNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	var object corev1.ResourceQuota
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	object.Name = name
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = namespace
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.CoreV1().ResourceQuotas(object.Namespace).Update(timeoutCtx, &object, metav1.UpdateOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("resourcequota not found: %s", name)
+		}
+		return fmt.Errorf("update resourcequota failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) UpdateNetworkPolicyYAML(ctx context.Context, name, rawYAML string) error {
+	if strings.TrimSpace(rawYAML) == "" {
+		return fmt.Errorf("yaml content is empty")
+	}
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.NetworkPolicyNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	var object networkingv1.NetworkPolicy
+	if err := yaml.Unmarshal([]byte(rawYAML), &object); err != nil {
+		return fmt.Errorf("invalid yaml: %w", err)
+	}
+	object.Name = name
+	if strings.TrimSpace(object.Namespace) == "" {
+		object.Namespace = namespace
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if _, err := clientset.NetworkingV1().NetworkPolicies(object.Namespace).Update(timeoutCtx, &object, metav1.UpdateOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("networkpolicy not found: %s", name)
+		}
+		return fmt.Errorf("update networkpolicy failed: %w", err)
+	}
+	return nil
+}
+
 func (r *LiveResourceReader) buildClientset(ctx context.Context) (*kubernetes.Clientset, error) {
 	if r.repo == nil {
 		return nil, ErrNoActiveClusterConnection
