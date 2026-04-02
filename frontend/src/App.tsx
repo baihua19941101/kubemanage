@@ -6,6 +6,7 @@ import ClusterPage from "./pages/ClusterPage";
 import LoginPage from "./pages/LoginPage";
 import NamespacePage from "./pages/NamespacePage";
 import NodePage from "./pages/NodePage";
+import PolicyPage from "./pages/PolicyPage";
 import ServiceDiscoveryPage from "./pages/ServiceDiscoveryPage";
 import StoragePage from "./pages/StoragePage";
 import WorkloadPage from "./pages/WorkloadPage";
@@ -49,6 +50,10 @@ export default function App() {
         <Route path="storage/storageclasses" element={<StoragePage initialMode="storageclasses" />} />
         <Route path="storage/configmaps" element={<StoragePage initialMode="configmaps" />} />
         <Route path="storage/secrets" element={<StoragePage initialMode="secrets" />} />
+        <Route path="policies" element={<Navigate to="/policies/limitranges" replace />} />
+        <Route path="policies/limitranges" element={<PolicyPage initialMode="limitranges" />} />
+        <Route path="policies/resourcequotas" element={<PolicyPage initialMode="resourcequotas" />} />
+        <Route path="policies/networkpolicies" element={<PolicyPage initialMode="networkpolicies" />} />
         <Route path="resources" element={<Navigate to="/service-discovery/services" replace />} />
         <Route path="auth-audit" element={<AuthAuditPage />} />
       </Route>

@@ -36,16 +36,16 @@ type IngressItem struct {
 }
 
 type HPAItem struct {
-	Name               string `json:"name"`
-	Namespace          string `json:"namespace"`
-	TargetKind         string `json:"targetKind"`
-	TargetName         string `json:"targetName"`
-	MinReplicas        int    `json:"minReplicas"`
-	MaxReplicas        int    `json:"maxReplicas"`
-	CurrentReplicas    int    `json:"currentReplicas"`
-	TargetCPUPercent   int    `json:"targetCPUPercent"`
-	CurrentCPUPercent  int    `json:"currentCPUPercent"`
-	Age                string `json:"age"`
+	Name              string `json:"name"`
+	Namespace         string `json:"namespace"`
+	TargetKind        string `json:"targetKind"`
+	TargetName        string `json:"targetName"`
+	MinReplicas       int    `json:"minReplicas"`
+	MaxReplicas       int    `json:"maxReplicas"`
+	CurrentReplicas   int    `json:"currentReplicas"`
+	TargetCPUPercent  int    `json:"targetCPUPercent"`
+	CurrentCPUPercent int    `json:"currentCPUPercent"`
+	Age               string `json:"age"`
 }
 
 type HPATarget struct {
@@ -102,17 +102,56 @@ type NodeItem struct {
 	Age         string `json:"age"`
 }
 
+type LimitRangeItem struct {
+	Name          string `json:"name"`
+	Namespace     string `json:"namespace"`
+	LimitsCount   int    `json:"limitsCount"`
+	DefaultCPU    string `json:"defaultCpu"`
+	DefaultMemory string `json:"defaultMemory"`
+	Age           string `json:"age"`
+}
+
+type ResourceQuotaItem struct {
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	HardPods   string `json:"hardPods"`
+	UsedPods   string `json:"usedPods"`
+	HardCPU    string `json:"hardCpu"`
+	UsedCPU    string `json:"usedCpu"`
+	HardMemory string `json:"hardMemory"`
+	UsedMemory string `json:"usedMemory"`
+	HardPVCs   string `json:"hardPvcs"`
+	UsedPVCs   string `json:"usedPvcs"`
+	Age        string `json:"age"`
+}
+
+type NetworkPolicyItem struct {
+	Name         string `json:"name"`
+	Namespace    string `json:"namespace"`
+	PodSelector  string `json:"podSelector"`
+	PolicyTypes  string `json:"policyTypes"`
+	IngressRules int    `json:"ingressRules"`
+	EgressRules  int    `json:"egressRules"`
+	Age          string `json:"age"`
+}
+
 type ResourceService struct {
-	services   []ServiceItem
-	configMaps []ConfigMapItem
-	secrets    []SecretItem
-	ingresses  []IngressItem
-	hpas       []HPAItem
-	pvs        []PVItem
-	pvcs       []PVCItem
-	scs        []StorageClassItem
-	nodes      []NodeItem
-	nodeYAML   map[string]string
+	services          []ServiceItem
+	configMaps        []ConfigMapItem
+	secrets           []SecretItem
+	ingresses         []IngressItem
+	hpas              []HPAItem
+	pvs               []PVItem
+	pvcs              []PVCItem
+	scs               []StorageClassItem
+	nodes             []NodeItem
+	nodeYAML          map[string]string
+	limitRanges       []LimitRangeItem
+	resourceQuotas    []ResourceQuotaItem
+	networkPolicies   []NetworkPolicyItem
+	limitRangeYAML    map[string]string
+	resourceQuotaYAML map[string]string
+	networkPolicyYAML map[string]string
 }
 
 func NewResourceService() *ResourceService {
@@ -288,6 +327,84 @@ func NewResourceService() *ResourceService {
 			"ip-10-10-1-21.ec2.internal": "apiVersion: v1\nkind: Node\nmetadata:\n  name: ip-10-10-1-21.ec2.internal\n  labels:\n    node-role.kubernetes.io/control-plane: \"\"\nstatus:\n  nodeInfo:\n    kubeletVersion: v1.30.2\n",
 			"ip-10-10-1-35.ec2.internal": "apiVersion: v1\nkind: Node\nmetadata:\n  name: ip-10-10-1-35.ec2.internal\n  labels:\n    node-role.kubernetes.io/worker: \"\"\nstatus:\n  nodeInfo:\n    kubeletVersion: v1.30.2\n",
 		},
+		limitRanges: []LimitRangeItem{
+			{
+				Name:          "compute-defaults",
+				Namespace:     "default",
+				LimitsCount:   1,
+				DefaultCPU:    "500m",
+				DefaultMemory: "512Mi",
+				Age:           "12d",
+			},
+			{
+				Name:          "dev-container-limits",
+				Namespace:     "dev",
+				LimitsCount:   1,
+				DefaultCPU:    "300m",
+				DefaultMemory: "256Mi",
+				Age:           "3d",
+			},
+		},
+		resourceQuotas: []ResourceQuotaItem{
+			{
+				Name:       "compute-quota",
+				Namespace:  "default",
+				HardPods:   "20",
+				UsedPods:   "7",
+				HardCPU:    "8",
+				UsedCPU:    "2",
+				HardMemory: "16Gi",
+				UsedMemory: "4Gi",
+				HardPVCs:   "10",
+				UsedPVCs:   "3",
+				Age:        "10d",
+			},
+			{
+				Name:       "dev-quota",
+				Namespace:  "dev",
+				HardPods:   "15",
+				UsedPods:   "5",
+				HardCPU:    "4",
+				UsedCPU:    "1",
+				HardMemory: "8Gi",
+				UsedMemory: "2Gi",
+				HardPVCs:   "8",
+				UsedPVCs:   "2",
+				Age:        "4d",
+			},
+		},
+		networkPolicies: []NetworkPolicyItem{
+			{
+				Name:         "default-deny-all",
+				Namespace:    "default",
+				PodSelector:  "<all>",
+				PolicyTypes:  "Ingress,Egress",
+				IngressRules: 0,
+				EgressRules:  0,
+				Age:          "9d",
+			},
+			{
+				Name:         "allow-web-to-api",
+				Namespace:    "dev",
+				PodSelector:  "app=api",
+				PolicyTypes:  "Ingress",
+				IngressRules: 1,
+				EgressRules:  0,
+				Age:          "2d",
+			},
+		},
+		limitRangeYAML: map[string]string{
+			"compute-defaults":     "apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: compute-defaults\n  namespace: default\nspec:\n  limits:\n  - type: Container\n    default:\n      cpu: 500m\n      memory: 512Mi\n    defaultRequest:\n      cpu: 100m\n      memory: 128Mi\n",
+			"dev-container-limits": "apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: dev-container-limits\n  namespace: dev\nspec:\n  limits:\n  - type: Container\n    default:\n      cpu: 300m\n      memory: 256Mi\n    defaultRequest:\n      cpu: 100m\n      memory: 128Mi\n",
+		},
+		resourceQuotaYAML: map[string]string{
+			"compute-quota": "apiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: compute-quota\n  namespace: default\nspec:\n  hard:\n    pods: \"20\"\n    requests.cpu: \"8\"\n    requests.memory: 16Gi\n    persistentvolumeclaims: \"10\"\n",
+			"dev-quota":     "apiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: dev-quota\n  namespace: dev\nspec:\n  hard:\n    pods: \"15\"\n    requests.cpu: \"4\"\n    requests.memory: 8Gi\n    persistentvolumeclaims: \"8\"\n",
+		},
+		networkPolicyYAML: map[string]string{
+			"default-deny-all": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: default-deny-all\n  namespace: default\nspec:\n  podSelector: {}\n  policyTypes:\n  - Ingress\n  - Egress\n",
+			"allow-web-to-api": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: allow-web-to-api\n  namespace: dev\nspec:\n  podSelector:\n    matchLabels:\n      app: api\n  policyTypes:\n  - Ingress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          app: web\n",
+		},
 	}
 }
 
@@ -443,6 +560,60 @@ func (s *ResourceService) GetNode(name string) (NodeItem, bool) {
 
 func (s *ResourceService) GetNodeYAML(name string) (string, bool) {
 	yaml, ok := s.nodeYAML[name]
+	return yaml, ok
+}
+
+func (s *ResourceService) ListLimitRanges() []LimitRangeItem {
+	return append([]LimitRangeItem(nil), s.limitRanges...)
+}
+
+func (s *ResourceService) GetLimitRange(name string) (LimitRangeItem, bool) {
+	for _, item := range s.limitRanges {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return LimitRangeItem{}, false
+}
+
+func (s *ResourceService) GetLimitRangeYAML(name string) (string, bool) {
+	yaml, ok := s.limitRangeYAML[name]
+	return yaml, ok
+}
+
+func (s *ResourceService) ListResourceQuotas() []ResourceQuotaItem {
+	return append([]ResourceQuotaItem(nil), s.resourceQuotas...)
+}
+
+func (s *ResourceService) GetResourceQuota(name string) (ResourceQuotaItem, bool) {
+	for _, item := range s.resourceQuotas {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return ResourceQuotaItem{}, false
+}
+
+func (s *ResourceService) GetResourceQuotaYAML(name string) (string, bool) {
+	yaml, ok := s.resourceQuotaYAML[name]
+	return yaml, ok
+}
+
+func (s *ResourceService) ListNetworkPolicies() []NetworkPolicyItem {
+	return append([]NetworkPolicyItem(nil), s.networkPolicies...)
+}
+
+func (s *ResourceService) GetNetworkPolicy(name string) (NetworkPolicyItem, bool) {
+	for _, item := range s.networkPolicies {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return NetworkPolicyItem{}, false
+}
+
+func (s *ResourceService) GetNetworkPolicyYAML(name string) (string, bool) {
+	yaml, ok := s.networkPolicyYAML[name]
 	return yaml, ok
 }
 

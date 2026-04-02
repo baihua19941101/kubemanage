@@ -434,3 +434,267 @@ func (h *ResourceHandler) DownloadNodeYAML(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=\"node-"+name+".yaml\"")
 	c.String(http.StatusOK, raw)
 }
+
+func (h *ResourceHandler) ListLimitRanges(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		items, err := h.liveResourceSvc.ListLimitRanges(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListLimitRanges()})
+}
+
+func (h *ResourceHandler) GetLimitRange(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		item, err := h.liveResourceSvc.GetLimitRange(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
+	item, ok := h.resourceSvc.GetLimitRange(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "limitrange not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) GetLimitRangeYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetLimitRangeYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetLimitRangeYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "limitrange not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) DownloadLimitRangeYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetLimitRangeYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=\"limitrange-"+name+".yaml\"")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetLimitRangeYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "limitrange not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=\"limitrange-"+name+".yaml\"")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) ListResourceQuotas(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		items, err := h.liveResourceSvc.ListResourceQuotas(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListResourceQuotas()})
+}
+
+func (h *ResourceHandler) GetResourceQuota(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		item, err := h.liveResourceSvc.GetResourceQuota(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
+	item, ok := h.resourceSvc.GetResourceQuota(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "resourcequota not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) GetResourceQuotaYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetResourceQuotaYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetResourceQuotaYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "resourcequota not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) DownloadResourceQuotaYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetResourceQuotaYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=\"resourcequota-"+name+".yaml\"")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetResourceQuotaYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "resourcequota not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=\"resourcequota-"+name+".yaml\"")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) ListNetworkPolicies(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		items, err := h.liveResourceSvc.ListNetworkPolicies(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListNetworkPolicies()})
+}
+
+func (h *ResourceHandler) GetNetworkPolicy(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		item, err := h.liveResourceSvc.GetNetworkPolicy(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
+	item, ok := h.resourceSvc.GetNetworkPolicy(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "networkpolicy not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) GetNetworkPolicyYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetNetworkPolicyYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetNetworkPolicyYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "networkpolicy not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) DownloadNetworkPolicyYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetNetworkPolicyYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=\"networkpolicy-"+name+".yaml\"")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetNetworkPolicyYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "networkpolicy not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=\"networkpolicy-"+name+".yaml\"")
+	c.String(http.StatusOK, raw)
+}

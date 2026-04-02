@@ -1003,6 +1003,31 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成开发：后端 token 会话列表/撤销/批量撤销接口，前端权限页会话令牌管理区块，`p1101` 冒烟脚本
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p1101_token_lifecycle_smoke_test.sh` 通过
 
+### P1201 计划（2026-04-02）
+
+#### 范围定义
+- 目标：落地 Policy 管理第一版可用闭环，覆盖 `LimitRange / ResourceQuota / NetworkPolicy`
+- 本轮不纳入：策略编辑/删除、策略模板、策略命中分析、策略漂移对比
+
+#### 能力范围
+- 后端新增 Policy 读接口：列表、详情、YAML 查看/下载
+- 前端新增 Policy 页面：资源切换、筛选、详情抽屉、YAML 查看下载
+- 延续 real-only 约束：优先走真实集群读取，不提供新 mock 回退分支
+
+#### 开发拆分
+1. `P1201-A`：README/TASKS 计划与状态同步
+2. `P1201-B`：后端 Policy 读链路与路由接入
+3. `P1201-C`：前端 Policy 页面与菜单路由接入
+4. `P1201-D`：联调与验收（go test、frontend build、policy 冒烟脚本）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：`feature/p1201-policy-management` 分支创建、数据库备份 `backups/kubemanage-20260402-095515-p1201.sql`
+- 已完成开发：`P1201-B` 后端 Policy 读链路（LimitRange/ResourceQuota/NetworkPolicy 列表详情与 YAML 查看/下载）
+- 已完成开发：`P1201-C` 前端 Policy 页面、菜单与路由接入（含 YAML 查看/下载交互）
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p1201_policy_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
+- 当前任务：`P1201 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1013,7 +1038,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十一阶段（P1101 已完成）`
-- 当前任务：`P1101：权限体系深化第一版（Token 生命周期）（已完成）`
-- 当前状态：`Token 生命周期管理闭环已交付并通过冒烟验收`
-- 下一任务：`与你确认下一优先级功能（Policy 管理 / 日志调试增强 / 用户组角色绑定深化）`
+- 当前阶段：`第十二阶段（P1201 已完成）`
+- 当前任务：`P1201：Policy 管理第一版能力（已完成）`
+- 当前状态：`Policy 管理第一版已交付并通过联调验收`
+- 下一任务：`与你确认下一阶段优先级`

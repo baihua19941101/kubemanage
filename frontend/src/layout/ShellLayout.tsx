@@ -96,7 +96,12 @@ const navSections: NavSection[] = [
     key: "security",
     label: "Security",
     icon: <SecurityIcon fontSize="small" />,
-    children: [{ label: "权限与审计", path: "/auth-audit" }]
+    children: [
+      { label: "LimitRanges", path: "/policies/limitranges" },
+      { label: "ResourceQuotas", path: "/policies/resourcequotas" },
+      { label: "NetworkPolicies", path: "/policies/networkpolicies" },
+      { label: "权限与审计", path: "/auth-audit" }
+    ]
   }
 ];
 

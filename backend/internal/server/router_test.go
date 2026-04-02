@@ -422,6 +422,99 @@ func TestResourceEndpoints(t *testing.T) {
 	if cd := w15.Header().Get("Content-Disposition"); cd == "" {
 		t.Fatalf("download node yaml missing content-disposition header")
 	}
+
+	req16, _ := http.NewRequest(http.MethodGet, "/api/v1/limitranges", nil)
+	w16 := httptest.NewRecorder()
+	r.ServeHTTP(w16, req16)
+	if w16.Code != http.StatusOK {
+		t.Fatalf("list limitranges failed: %d body=%s", w16.Code, w16.Body.String())
+	}
+
+	req17, _ := http.NewRequest(http.MethodGet, "/api/v1/limitranges/compute-defaults", nil)
+	w17 := httptest.NewRecorder()
+	r.ServeHTTP(w17, req17)
+	if w17.Code != http.StatusOK {
+		t.Fatalf("get limitrange failed: %d body=%s", w17.Code, w17.Body.String())
+	}
+
+	req18, _ := http.NewRequest(http.MethodGet, "/api/v1/limitranges/compute-defaults/yaml", nil)
+	w18 := httptest.NewRecorder()
+	r.ServeHTTP(w18, req18)
+	if w18.Code != http.StatusOK {
+		t.Fatalf("get limitrange yaml failed: %d body=%s", w18.Code, w18.Body.String())
+	}
+
+	req19, _ := http.NewRequest(http.MethodGet, "/api/v1/limitranges/compute-defaults/yaml/download", nil)
+	w19 := httptest.NewRecorder()
+	r.ServeHTTP(w19, req19)
+	if w19.Code != http.StatusOK {
+		t.Fatalf("download limitrange yaml failed: %d body=%s", w19.Code, w19.Body.String())
+	}
+	if cd := w19.Header().Get("Content-Disposition"); cd == "" {
+		t.Fatalf("download limitrange yaml missing content-disposition header")
+	}
+
+	req20, _ := http.NewRequest(http.MethodGet, "/api/v1/resourcequotas", nil)
+	w20 := httptest.NewRecorder()
+	r.ServeHTTP(w20, req20)
+	if w20.Code != http.StatusOK {
+		t.Fatalf("list resourcequotas failed: %d body=%s", w20.Code, w20.Body.String())
+	}
+
+	req21, _ := http.NewRequest(http.MethodGet, "/api/v1/resourcequotas/compute-quota", nil)
+	w21 := httptest.NewRecorder()
+	r.ServeHTTP(w21, req21)
+	if w21.Code != http.StatusOK {
+		t.Fatalf("get resourcequota failed: %d body=%s", w21.Code, w21.Body.String())
+	}
+
+	req22, _ := http.NewRequest(http.MethodGet, "/api/v1/resourcequotas/compute-quota/yaml", nil)
+	w22 := httptest.NewRecorder()
+	r.ServeHTTP(w22, req22)
+	if w22.Code != http.StatusOK {
+		t.Fatalf("get resourcequota yaml failed: %d body=%s", w22.Code, w22.Body.String())
+	}
+
+	req23, _ := http.NewRequest(http.MethodGet, "/api/v1/resourcequotas/compute-quota/yaml/download", nil)
+	w23 := httptest.NewRecorder()
+	r.ServeHTTP(w23, req23)
+	if w23.Code != http.StatusOK {
+		t.Fatalf("download resourcequota yaml failed: %d body=%s", w23.Code, w23.Body.String())
+	}
+	if cd := w23.Header().Get("Content-Disposition"); cd == "" {
+		t.Fatalf("download resourcequota yaml missing content-disposition header")
+	}
+
+	req24, _ := http.NewRequest(http.MethodGet, "/api/v1/networkpolicies", nil)
+	w24 := httptest.NewRecorder()
+	r.ServeHTTP(w24, req24)
+	if w24.Code != http.StatusOK {
+		t.Fatalf("list networkpolicies failed: %d body=%s", w24.Code, w24.Body.String())
+	}
+
+	req25, _ := http.NewRequest(http.MethodGet, "/api/v1/networkpolicies/default-deny-all", nil)
+	w25 := httptest.NewRecorder()
+	r.ServeHTTP(w25, req25)
+	if w25.Code != http.StatusOK {
+		t.Fatalf("get networkpolicy failed: %d body=%s", w25.Code, w25.Body.String())
+	}
+
+	req26, _ := http.NewRequest(http.MethodGet, "/api/v1/networkpolicies/default-deny-all/yaml", nil)
+	w26 := httptest.NewRecorder()
+	r.ServeHTTP(w26, req26)
+	if w26.Code != http.StatusOK {
+		t.Fatalf("get networkpolicy yaml failed: %d body=%s", w26.Code, w26.Body.String())
+	}
+
+	req27, _ := http.NewRequest(http.MethodGet, "/api/v1/networkpolicies/default-deny-all/yaml/download", nil)
+	w27 := httptest.NewRecorder()
+	r.ServeHTTP(w27, req27)
+	if w27.Code != http.StatusOK {
+		t.Fatalf("download networkpolicy yaml failed: %d body=%s", w27.Code, w27.Body.String())
+	}
+	if cd := w27.Header().Get("Content-Disposition"); cd == "" {
+		t.Fatalf("download networkpolicy yaml missing content-disposition header")
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {
