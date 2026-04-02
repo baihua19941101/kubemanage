@@ -59,6 +59,7 @@ var (
 	ErrAuthProviderName      = errors.New("auth provider name is required")
 	ErrLDAPConfigInvalid     = errors.New("ldap provider config invalid")
 	ErrLDAPUnavailable       = errors.New("ldap provider unavailable")
+	ErrTokenSessionNotFound  = errors.New("token session not found")
 )
 
 type AuthIdentity struct {
@@ -102,6 +103,17 @@ type PublicAuthProvider struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
 	IsDefault bool   `json:"isDefault"`
+}
+
+type TokenSessionInfo struct {
+	ID        uint       `json:"id"`
+	UserID    uint       `json:"userId"`
+	Username  string     `json:"username"`
+	ExpiresAt time.Time  `json:"expiresAt"`
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	Status    string     `json:"status"`
+	IsActive  bool       `json:"isActive"`
 }
 
 type AuthService struct {
@@ -630,6 +642,110 @@ func (s *AuthService) SetDefaultAuthProvider(ctx context.Context, id uint) error
 		}
 		return tx.Model(&infra.AuthProviderRecord{}).Where("id = ?", id).Updates(map[string]any{"is_default": true, "updated_at": time.Now()}).Error
 	})
+}
+
+func (s *AuthService) ListTokenSessions(ctx context.Context, username string, activeOnly bool, limit int) ([]TokenSessionInfo, error) {
+	if s.db == nil {
+		return nil, ErrAuthDBNotEnabled
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	now := time.Now()
+
+	type tokenSessionRow struct {
+		ID        uint
+		UserID    uint
+		Username  string
+		ExpiresAt time.Time
+		RevokedAt *time.Time
+		CreatedAt time.Time
+	}
+	rows := make([]tokenSessionRow, 0, limit)
+	query := s.db.WithContext(ctx).
+		Table("refresh_tokens").
+		Select("refresh_tokens.id, refresh_tokens.user_id, users.username, refresh_tokens.expires_at, refresh_tokens.revoked_at, refresh_tokens.created_at").
+		Joins("join users on users.id = refresh_tokens.user_id")
+	if strings.TrimSpace(username) != "" {
+		query = query.Where("users.username = ?", strings.TrimSpace(username))
+	}
+	if activeOnly {
+		query = query.Where("refresh_tokens.revoked_at is null and refresh_tokens.expires_at > ?", now)
+	}
+	if err := query.Order("refresh_tokens.id desc").Limit(limit).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	items := make([]TokenSessionInfo, 0, len(rows))
+	for _, row := range rows {
+		status := "active"
+		active := true
+		if row.RevokedAt != nil {
+			status = "revoked"
+			active = false
+		} else if now.After(row.ExpiresAt) {
+			status = "expired"
+			active = false
+		}
+		items = append(items, TokenSessionInfo{
+			ID:        row.ID,
+			UserID:    row.UserID,
+			Username:  row.Username,
+			ExpiresAt: row.ExpiresAt,
+			RevokedAt: row.RevokedAt,
+			CreatedAt: row.CreatedAt,
+			Status:    status,
+			IsActive:  active,
+		})
+	}
+	return items, nil
+}
+
+func (s *AuthService) RevokeTokenSession(ctx context.Context, id uint) error {
+	if s.db == nil {
+		return ErrAuthDBNotEnabled
+	}
+	var record infra.RefreshTokenRecord
+	if err := s.db.WithContext(ctx).First(&record, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrTokenSessionNotFound
+		}
+		return err
+	}
+	if record.RevokedAt != nil {
+		return nil
+	}
+	now := time.Now()
+	record.RevokedAt = &now
+	return s.db.WithContext(ctx).Save(&record).Error
+}
+
+func (s *AuthService) RevokeAllTokensByUser(ctx context.Context, username string) (int64, error) {
+	if s.db == nil {
+		return 0, ErrAuthDBNotEnabled
+	}
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return 0, ErrUserNotFound
+	}
+	var user infra.UserRecord
+	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, ErrUserNotFound
+		}
+		return 0, err
+	}
+	now := time.Now()
+	result := s.db.WithContext(ctx).
+		Model(&infra.RefreshTokenRecord{}).
+		Where("user_id = ? and revoked_at is null", user.ID).
+		Updates(map[string]any{"revoked_at": &now, "updated_at": now})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
 
 func (s *AuthService) ParseAccessToken(accessToken string) (*AuthIdentity, error) {

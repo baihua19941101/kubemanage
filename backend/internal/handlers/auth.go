@@ -56,6 +56,10 @@ type updateAuthProviderStatusRequest struct {
 	IsEnabled bool `json:"isEnabled"`
 }
 
+type revokeAllTokensRequest struct {
+	Username string `json:"username"`
+}
+
 func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 	return &AuthHandler{authSvc: authSvc}
 }
@@ -260,6 +264,89 @@ func (h *AuthHandler) ListPublicAuthProviders(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *AuthHandler) ListTokenSessions(c *gin.Context) {
+	username := strings.TrimSpace(c.Query("username"))
+	activeOnly := false
+	if raw := strings.ToLower(strings.TrimSpace(c.Query("activeOnly"))); raw == "1" || raw == "true" || raw == "yes" {
+		activeOnly = true
+	}
+	limit := 100
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		if parsed, err := strconv.Atoi(rawLimit); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	items, err := h.authSvc.ListTokenSessions(c.Request.Context(), username, activeOnly, limit)
+	if err != nil {
+		if err == service.ErrAuthDBNotEnabled {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (h *AuthHandler) RevokeTokenSession(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid token session id"})
+		return
+	}
+	if err := h.authSvc.RevokeTokenSession(c.Request.Context(), uint(id)); err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrTokenSessionNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) RevokeAllTokens(c *gin.Context) {
+	requester := strings.TrimSpace(c.GetString(middleware.CtxUserKey))
+	role := strings.TrimSpace(c.GetString(middleware.CtxRoleKey))
+	target := requester
+
+	var req revokeAllTokensRequest
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
+		}
+		if strings.TrimSpace(req.Username) != "" {
+			target = strings.TrimSpace(req.Username)
+		}
+	}
+	if target == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
+		return
+	}
+	if h.authSvc.NormalizeRole(role) != service.RoleAdmin && !strings.EqualFold(target, requester) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	count, err := h.authSvc.RevokeAllTokensByUser(c.Request.Context(), target)
+	if err != nil {
+		switch err {
+		case service.ErrAuthDBNotEnabled:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		case service.ErrUserNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"revoked": count, "username": target})
 }
 
 func (h *AuthHandler) CreateAuthProvider(c *gin.Context) {
