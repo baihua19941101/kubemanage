@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第十二阶段（P1201 已完成）
+- 阶段：第十二阶段（P1202 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -48,6 +48,7 @@
 | P1001 | 第十阶段任务1：节点管理第一版能力 | 已完成 | 已完成节点列表/详情/YAML 读能力、前端节点页面与冒烟验收 |
 | P1101 | 第十一阶段任务1：权限体系深化第一版（Token 生命周期） | 已完成 | 已完成 token 会话列表、撤销与登出全部能力并接入前端权限页 |
 | P1201 | 第十二阶段任务1：Policy 管理第一版能力 | 已完成 | 已完成 LimitRange/ResourceQuota/NetworkPolicy 列表详情与 YAML 查看/下载、前端页面路由与冒烟验收 |
+| P1202 | 第十二阶段任务2：Policy YAML 写能力第一版 | 已完成 | 已完成 Policy YAML 保存接口、前端编辑保存交互与写入验收 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -180,6 +181,11 @@
 | T142 | P1201-B：后端 Policy 读链路实现 | 已完成 | 已新增 LimitRange/ResourceQuota/NetworkPolicy 列表详情与 YAML 查看/下载接口并接入路由测试 |
 | T143 | P1201-C：前端 Policy 页面与路由接入 | 已完成 | 已新增 Policy 页面、菜单入口、资源切换与 YAML 查看/下载交互 |
 | T144 | P1201-D：联调与验收 | 已完成 | 已通过 go test ./...、frontend build、scripts/p1201_policy_smoke_test.sh |
+| T145 | P1202 前置：数据库备份与任务启动 | 已完成 | 已备份 backups/kubemanage-20260402-102151-p1202.sql，进入 P1202 开发 |
+| T146 | P1202-A：README/TASKS 计划与状态同步 | 已完成 | 已同步 P1202 范围、拆分与当前状态（进行中） |
+| T147 | P1202-B：后端 Policy YAML 写接口 | 已完成 | 已新增 3 类 Policy YAML 保存接口并接入路由、权限、确认头与作用域校验 |
+| T148 | P1202-C：前端 Policy YAML 编辑保存交互 | 已完成 | PolicyPage 已支持 YAML 查看/编辑/保存，按角色控制保存能力 |
+| T149 | P1202-D：联调与验收 | 已完成 | 已通过 go test ./...、frontend build、scripts/p1202_policy_write_smoke_test.sh |
 
 ## 完成记录
 
@@ -391,3 +397,9 @@
 - 2026-04-02：完成 T143（前端新增 PolicyPage 与菜单/路由接入，支持 LimitRange/ResourceQuota/NetworkPolicy 切换与 YAML 查看下载）
 - 2026-04-02：完成 T144（完成联调验收：go test ./...、npm run build、scripts/p1201_policy_smoke_test.sh 全部通过）
 - 2026-04-02：完成 P1201（Policy 管理第一版能力交付完成）
+- 2026-04-02：完成 T145（P1202 开发前数据库备份：backups/kubemanage-20260402-102151-p1202.sql）
+- 2026-04-02：完成 T146（同步 README/TASKS：P1202 范围、拆分与状态）
+- 2026-04-02：完成 T147（后端新增 Policy YAML 保存接口，接入命名空间作用域权限与确认头）
+- 2026-04-02：完成 T148（前端 PolicyPage 新增 YAML 编辑保存交互，readonly 仅查看）
+- 2026-04-02：完成 T149（联调验收通过：go test ./...、npm run build、scripts/p1202_policy_write_smoke_test.sh）
+- 2026-04-02：完成 P1202（Policy YAML 写能力第一版交付完成）

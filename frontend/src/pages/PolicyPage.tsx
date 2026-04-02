@@ -5,6 +5,7 @@ import PageScaffold from "../components/framework/PageScaffold";
 import ResourceTable from "../components/framework/ResourceTable";
 import YamlDialog from "../components/framework/YamlDialog";
 import { apiFetch, parseApiError } from "../lib/api";
+import { useAuthStore } from "../stores/useAuthStore";
 import { useResourceStore } from "../stores/useResourceStore";
 
 export type PolicyMode = "limitranges" | "resourcequotas" | "networkpolicies";
@@ -53,6 +54,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
   const loading = useResourceStore((s) => s.loading);
   const storeError = useResourceStore((s) => s.error);
   const load = useResourceStore((s) => s.load);
+  const canWorkloadWrite = useAuthStore((s) => s.canWorkloadWrite);
 
   const [mode, setMode] = useState<PolicyMode>(initialMode);
   const [keyword, setKeyword] = useState("");
@@ -136,6 +138,24 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
     }
   }
 
+  async function saveYaml(content: string) {
+    if (!selectedName) return;
+    setPageError("");
+    const resp = await apiFetch(`/api/v1/${endpointPrefix}/${encodeURIComponent(selectedName)}/yaml`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Action-Confirm": "CONFIRM"
+      },
+      body: JSON.stringify({ yaml: content })
+    });
+    if (!resp.ok) {
+      throw await parseApiError(resp, `保存 ${currentLabel} YAML 失败`);
+    }
+    setYamlOpen(false);
+    await load();
+  }
+
   return (
     <>
       <PageScaffold
@@ -198,7 +218,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
             <Typography variant="body2">默认内存：{selectedLimitRange.defaultMemory || "-"}</Typography>
             <Typography variant="body2">Age：{selectedLimitRange.age}</Typography>
             <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-              <Button size="small" onClick={openYaml}>查看 YAML</Button>
+              <Button size="small" onClick={openYaml}>{canWorkloadWrite() ? "查看/编辑 YAML" : "查看 YAML"}</Button>
               <Button size="small" component="a" href={`/api/v1/limitranges/${encodeURIComponent(selectedLimitRange.name)}/yaml/download`}>
                 下载 YAML
               </Button>
@@ -216,7 +236,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
             <Typography variant="body2">PVCs(used/hard)：{selectedResourceQuota.usedPvcs || "0"}/{selectedResourceQuota.hardPvcs || "0"}</Typography>
             <Typography variant="body2">Age：{selectedResourceQuota.age}</Typography>
             <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-              <Button size="small" onClick={openYaml}>查看 YAML</Button>
+              <Button size="small" onClick={openYaml}>{canWorkloadWrite() ? "查看/编辑 YAML" : "查看 YAML"}</Button>
               <Button size="small" component="a" href={`/api/v1/resourcequotas/${encodeURIComponent(selectedResourceQuota.name)}/yaml/download`}>
                 下载 YAML
               </Button>
@@ -234,7 +254,7 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
             <Typography variant="body2">Egress Rules：{selectedNetworkPolicy.egressRules}</Typography>
             <Typography variant="body2">Age：{selectedNetworkPolicy.age}</Typography>
             <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-              <Button size="small" onClick={openYaml}>查看 YAML</Button>
+              <Button size="small" onClick={openYaml}>{canWorkloadWrite() ? "查看/编辑 YAML" : "查看 YAML"}</Button>
               <Button size="small" component="a" href={`/api/v1/networkpolicies/${encodeURIComponent(selectedNetworkPolicy.name)}/yaml/download`}>
                 下载 YAML
               </Button>
@@ -243,7 +263,13 @@ export default function PolicyPage({ initialMode = "limitranges" }: Props) {
         )}
       </DetailDrawer>
 
-      <YamlDialog open={yamlOpen} title={yamlTitle} yaml={yamlText} onClose={() => setYamlOpen(false)} />
+      <YamlDialog
+        open={yamlOpen}
+        title={yamlTitle}
+        yaml={yamlText}
+        onClose={() => setYamlOpen(false)}
+        onSave={canWorkloadWrite() ? saveYaml : undefined}
+      />
     </>
   );
 }

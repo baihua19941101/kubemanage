@@ -515,6 +515,41 @@ func TestResourceEndpoints(t *testing.T) {
 	if cd := w27.Header().Get("Content-Disposition"); cd == "" {
 		t.Fatalf("download networkpolicy yaml missing content-disposition header")
 	}
+
+	updateLimitRangeDenyReq := requestWithRole(http.MethodPut, "/api/v1/limitranges/compute-defaults/yaml", `{"yaml":"apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: compute-defaults\n  namespace: default\n"}`, "operator")
+	updateLimitRangeDenyW := httptest.NewRecorder()
+	r.ServeHTTP(updateLimitRangeDenyW, updateLimitRangeDenyReq)
+	if updateLimitRangeDenyW.Code != http.StatusForbidden {
+		t.Fatalf("operator update default limitrange should be forbidden: %d body=%s", updateLimitRangeDenyW.Code, updateLimitRangeDenyW.Body.String())
+	}
+
+	updateLimitRangeDevReq := requestWithRole(http.MethodPut, "/api/v1/limitranges/dev-container-limits/yaml", `{"yaml":"apiVersion: v1\nkind: LimitRange\nmetadata:\n  name: dev-container-limits\n  namespace: dev\n"}`, "operator")
+	updateLimitRangeDevW := httptest.NewRecorder()
+	r.ServeHTTP(updateLimitRangeDevW, updateLimitRangeDevReq)
+	if updateLimitRangeDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator update dev limitrange should pass: %d body=%s", updateLimitRangeDevW.Code, updateLimitRangeDevW.Body.String())
+	}
+
+	updateRQDevReq := requestWithRole(http.MethodPut, "/api/v1/resourcequotas/dev-quota/yaml", `{"yaml":"apiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: dev-quota\n  namespace: dev\n"}`, "operator")
+	updateRQDevW := httptest.NewRecorder()
+	r.ServeHTTP(updateRQDevW, updateRQDevReq)
+	if updateRQDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator update dev resourcequota should pass: %d body=%s", updateRQDevW.Code, updateRQDevW.Body.String())
+	}
+
+	updateNPDenyReq := requestWithRole(http.MethodPut, "/api/v1/networkpolicies/default-deny-all/yaml", `{"yaml":"apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: default-deny-all\n  namespace: default\n"}`, "operator")
+	updateNPDenyW := httptest.NewRecorder()
+	r.ServeHTTP(updateNPDenyW, updateNPDenyReq)
+	if updateNPDenyW.Code != http.StatusForbidden {
+		t.Fatalf("operator update default networkpolicy should be forbidden: %d body=%s", updateNPDenyW.Code, updateNPDenyW.Body.String())
+	}
+
+	updateNPDevReq := requestWithRole(http.MethodPut, "/api/v1/networkpolicies/allow-web-to-api/yaml", `{"yaml":"apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: allow-web-to-api\n  namespace: dev\n"}`, "operator")
+	updateNPDevW := httptest.NewRecorder()
+	r.ServeHTTP(updateNPDevW, updateNPDevReq)
+	if updateNPDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator update dev networkpolicy should pass: %d body=%s", updateNPDevW.Code, updateNPDevW.Body.String())
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {

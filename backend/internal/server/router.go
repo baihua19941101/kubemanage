@@ -55,9 +55,10 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 	liveWorkloadSvc := service.NewLiveWorkloadReader(clusterConnectionRepo)
 	terminalSessions := service.NewTerminalSessionStore(parseTerminalSessionTTL())
 	liveResourceSvc := service.NewLiveResourceReader(clusterConnectionRepo)
+	resourceSvc := service.NewResourceService()
 	namespaceHandler := handlers.NewNamespaceHandler(namespaceSvc, clusterConnectionSvc, adapterMode)
 	workloadHandler := handlers.NewWorkloadHandler(workloadSvc, liveWorkloadSvc, terminalSessions, adapterMode)
-	resourceHandler := handlers.NewResourceHandler(service.NewResourceService(), liveResourceSvc, adapterMode)
+	resourceHandler := handlers.NewResourceHandler(resourceSvc, liveResourceSvc, adapterMode)
 	authHandler := handlers.NewAuthHandler(authSvc)
 	auditHandler := handlers.NewAuditHandler(auditSvc)
 
@@ -183,6 +184,24 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.PUT("/cronjobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			return workloadSvc.CronJobNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_cronjob_yaml"), workloadHandler.UpdateCronJobYAML)
+		write.PUT("/limitranges/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.LimitRangeNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.LimitRangeNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("update_limitrange_yaml"), resourceHandler.UpdateLimitRangeYAML)
+		write.PUT("/resourcequotas/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.ResourceQuotaNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.ResourceQuotaNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("update_resourcequota_yaml"), resourceHandler.UpdateResourceQuotaYAML)
+		write.PUT("/networkpolicies/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveResourceSvc != nil {
+				return liveResourceSvc.NetworkPolicyNamespace(c.Request.Context(), c.Param("name"))
+			}
+			return resourceSvc.NetworkPolicyNamespace(c.Param("name"))
+		}), middleware.RequireActionConfirm("update_networkpolicy_yaml"), resourceHandler.UpdateNetworkPolicyYAML)
 	}
 
 	return r

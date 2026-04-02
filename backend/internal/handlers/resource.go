@@ -15,6 +15,10 @@ type ResourceHandler struct {
 	adapterMode     string
 }
 
+type updateResourceYAMLRequest struct {
+	YAML string `json:"yaml"`
+}
+
 func NewResourceHandler(resourceSvc *service.ResourceService, liveResourceSvc *service.LiveResourceReader, adapterMode string) *ResourceHandler {
 	return &ResourceHandler{
 		resourceSvc:     resourceSvc,
@@ -697,4 +701,88 @@ func (h *ResourceHandler) DownloadNetworkPolicyYAML(c *gin.Context) {
 	c.Header("Content-Type", "application/yaml; charset=utf-8")
 	c.Header("Content-Disposition", "attachment; filename=\"networkpolicy-"+name+".yaml\"")
 	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) UpdateLimitRangeYAML(c *gin.Context) {
+	name := c.Param("name")
+	var req updateResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.UpdateLimitRangeYAML(c.Request.Context(), name, req.YAML); err != nil {
+			handleResourceYAMLUpdateError(c, err, "limitrange")
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.UpdateLimitRangeYAML(name, req.YAML); err != nil {
+		handleResourceYAMLUpdateError(c, err, "limitrange")
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ResourceHandler) UpdateResourceQuotaYAML(c *gin.Context) {
+	name := c.Param("name")
+	var req updateResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.UpdateResourceQuotaYAML(c.Request.Context(), name, req.YAML); err != nil {
+			handleResourceYAMLUpdateError(c, err, "resourcequota")
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.UpdateResourceQuotaYAML(name, req.YAML); err != nil {
+		handleResourceYAMLUpdateError(c, err, "resourcequota")
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ResourceHandler) UpdateNetworkPolicyYAML(c *gin.Context) {
+	name := c.Param("name")
+	var req updateResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.UpdateNetworkPolicyYAML(c.Request.Context(), name, req.YAML); err != nil {
+			handleResourceYAMLUpdateError(c, err, "networkpolicy")
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.UpdateNetworkPolicyYAML(name, req.YAML); err != nil {
+		handleResourceYAMLUpdateError(c, err, "networkpolicy")
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func handleResourceYAMLUpdateError(c *gin.Context, err error, kind string) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "yaml content is empty"), strings.Contains(msg, "invalid yaml"):
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+	case strings.Contains(msg, "not found:"):
+		c.JSON(http.StatusNotFound, gin.H{"error": msg})
+	case strings.Contains(msg, "failed:"):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	default:
+		if strings.Contains(msg, kind+" not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+			return
+		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	}
 }

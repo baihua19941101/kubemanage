@@ -1028,6 +1028,32 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p1201_policy_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
 - 当前任务：`P1201 已收口`
 
+### P1202 计划（2026-04-02）
+
+#### 范围定义
+- 目标：在 P1201 读能力基础上，补齐 Policy YAML 编辑/应用闭环（写能力第一版）
+- 覆盖资源：`LimitRange / ResourceQuota / NetworkPolicy`
+- 本轮不纳入：策略模板、批量发布、变更审批流、漂移比对
+
+#### 能力范围
+- 后端新增 Policy YAML 保存接口：按资源名更新 YAML
+- 前端 Policy 页面新增 YAML 编辑保存交互
+- 写操作沿用确认头与权限模型（命名空间作用域 + 审计写记录）
+
+#### 开发拆分
+1. `P1202-A`：README/TASKS 计划与状态同步
+2. `P1202-B`：后端 Policy 写接口与路由接入
+3. `P1202-C`：前端 Policy YAML 编辑保存交互
+4. `P1202-D`：联调与验收（go test、frontend build、policy 写入冒烟脚本）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-102151-p1202.sql`
+- 已完成开发：`P1202-B` 后端 Policy YAML 写接口（LimitRange/ResourceQuota/NetworkPolicy）
+- 已完成开发：`P1202-C` 前端 Policy YAML 编辑保存交互（含角色可写控制）
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p1202_policy_write_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
+- 当前任务：`P1202 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1038,7 +1064,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十二阶段（P1201 已完成）`
-- 当前任务：`P1201：Policy 管理第一版能力（已完成）`
-- 当前状态：`Policy 管理第一版已交付并通过联调验收`
+- 当前阶段：`第十二阶段（P1202 已完成）`
+- 当前任务：`P1202：Policy YAML 写能力第一版（已完成）`
+- 当前状态：`Policy 读写闭环已交付并通过联调验收`
 - 下一任务：`与你确认下一阶段优先级`
