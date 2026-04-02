@@ -10,8 +10,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 type LiveResourceReader struct {
@@ -350,6 +352,58 @@ func (r *LiveResourceReader) GetStorageClass(ctx context.Context, name string) (
 	return StorageClassItem{}, fmt.Errorf("storageclass not found: %s", name)
 }
 
+func (r *LiveResourceReader) ListNodes(ctx context.Context) ([]NodeItem, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return nil, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	list, err := clientset.CoreV1().Nodes().List(timeoutCtx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list nodes failed: %w", err)
+	}
+	items := make([]NodeItem, 0, len(list.Items))
+	for _, item := range list.Items {
+		items = append(items, toNodeItem(item))
+	}
+	return items, nil
+}
+
+func (r *LiveResourceReader) GetNode(ctx context.Context, name string) (NodeItem, error) {
+	items, err := r.ListNodes(ctx)
+	if err != nil {
+		return NodeItem{}, err
+	}
+	for _, item := range items {
+		if item.Name == name {
+			return item, nil
+		}
+	}
+	return NodeItem{}, fmt.Errorf("node not found: %s", name)
+}
+
+func (r *LiveResourceReader) GetNodeYAML(ctx context.Context, name string) (string, error) {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return "", err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	item, err := clientset.CoreV1().Nodes().Get(timeoutCtx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", fmt.Errorf("node not found: %s", name)
+		}
+		return "", fmt.Errorf("get node failed: %w", err)
+	}
+	raw, err := yaml.Marshal(item)
+	if err != nil {
+		return "", fmt.Errorf("marshal node yaml failed: %w", err)
+	}
+	return string(raw), nil
+}
+
 func (r *LiveResourceReader) buildClientset(ctx context.Context) (*kubernetes.Clientset, error) {
 	if r.repo == nil {
 		return nil, ErrNoActiveClusterConnection
@@ -508,6 +562,63 @@ func toStorageClassItem(item storagev1.StorageClass) StorageClassItem {
 		AllowVolumeExpansion: valueOrDefault(item.AllowVolumeExpansion, false),
 		Age:                  humanAge(item.CreationTimestamp.Time),
 	}
+}
+
+func toNodeItem(item corev1.Node) NodeItem {
+	ready := "Unknown"
+	for _, cond := range item.Status.Conditions {
+		if cond.Type == corev1.NodeReady {
+			if cond.Status == corev1.ConditionTrue {
+				ready = "Ready"
+			} else {
+				ready = "NotReady"
+			}
+			break
+		}
+	}
+	internalIP := ""
+	for _, addr := range item.Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			internalIP = strings.TrimSpace(addr.Address)
+			break
+		}
+	}
+	podCount := 0
+	if qty, ok := item.Status.Allocatable[corev1.ResourcePods]; ok {
+		podCount = int(qty.Value())
+	}
+	return NodeItem{
+		Name:        item.Name,
+		Roles:       nodeRoles(item),
+		Version:     strings.TrimSpace(item.Status.NodeInfo.KubeletVersion),
+		InternalIP:  internalIP,
+		Status:      ready,
+		OSImage:     strings.TrimSpace(item.Status.NodeInfo.OSImage),
+		CPU:         item.Status.Allocatable.Cpu().String(),
+		Memory:      item.Status.Allocatable.Memory().String(),
+		PodCount:    podCount,
+		LabelsCount: len(item.Labels),
+		TaintsCount: len(item.Spec.Taints),
+		Age:         humanAge(item.CreationTimestamp.Time),
+	}
+}
+
+func nodeRoles(item corev1.Node) string {
+	roles := make([]string, 0, 2)
+	for key := range item.Labels {
+		if strings.HasPrefix(key, "node-role.kubernetes.io/") {
+			role := strings.TrimPrefix(key, "node-role.kubernetes.io/")
+			if strings.TrimSpace(role) == "" {
+				role = "<none>"
+			}
+			roles = append(roles, role)
+		}
+	}
+	if len(roles) == 0 {
+		return "<none>"
+	}
+	sort.Strings(roles)
+	return strings.Join(roles, ",")
 }
 
 func joinAccessModes(modes []corev1.PersistentVolumeAccessMode) string {

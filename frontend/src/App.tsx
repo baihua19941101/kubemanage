@@ -5,6 +5,7 @@ import AuthAuditPage from "./pages/AuthAuditPage";
 import ClusterPage from "./pages/ClusterPage";
 import LoginPage from "./pages/LoginPage";
 import NamespacePage from "./pages/NamespacePage";
+import NodePage from "./pages/NodePage";
 import ServiceDiscoveryPage from "./pages/ServiceDiscoveryPage";
 import StoragePage from "./pages/StoragePage";
 import WorkloadPage from "./pages/WorkloadPage";
@@ -30,6 +31,7 @@ export default function App() {
         <Route index element={<Navigate to="/cluster" replace />} />
         <Route path="cluster" element={<ClusterPage />} />
         <Route path="namespaces" element={<NamespacePage />} />
+        <Route path="nodes" element={<NodePage />} />
         <Route path="workloads" element={<Navigate to="/workloads/deployments" replace />} />
         <Route path="workloads/deployments" element={<WorkloadPage initialMode="deployments" showModeSwitcher={false} />} />
         <Route path="workloads/pods" element={<WorkloadPage initialMode="pods" showModeSwitcher={false} />} />
