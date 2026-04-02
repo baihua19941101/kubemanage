@@ -2,8 +2,8 @@
 
 ## 当前阶段
 
-- 阶段：第八阶段（P801 已完成）
-- 更新时间：2026-04-01
+- 阶段：第九阶段（P901 已完成）
+- 更新时间：2026-04-02
 
 ## 任务列表
 
@@ -44,6 +44,7 @@
 | P601 | 第六阶段任务1：用户管理增强 | 已完成 | 已完成用户列表、用户启停、重置密码、前端页面改造与冒烟验收 |
 | P701 | 第七阶段任务1：细粒度授权基础能力 | 已完成 | 已完成用户角色与授权范围在线编辑、前端交互与冒烟验收 |
 | P801 | 第八阶段任务1：认证源管理基础能力（local/ldap） | 已完成 | 已完成认证源模型、管理接口、登录 provider 语义与前端登录源选择 |
+| P901 | 第九阶段任务1：真实 LDAP Bind 最小闭环 | 已完成 | 已完成 provider=ldap 真实登录链路、账号映射策略与验收脚本 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -156,6 +157,11 @@
 | T122 | P801-B：后端认证源模型与管理接口 | 已完成 | 已新增 auth_providers 模型、默认初始化与认证源管理接口 |
 | T123 | P801-C：登录 provider 语义与前端登录页扩展 | 已完成 | 登录接口支持 provider，登录页新增认证源选择并读取公开认证源列表 |
 | T124 | P801-D：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p801_auth_provider_smoke_test.sh |
+| T125 | P901 前置：数据库备份与功能分支创建 | 已完成 | 已创建 feature/p901-ldap-bind-mvp，已备份 backups/kubemanage-20260401-221003-p901.sql |
+| T126 | P901-A：README/TASKS 计划与状态同步 | 已完成 | 已同步第九阶段范围、拆分与当前状态（进行中） |
+| T127 | P901-B：后端 LDAP Bind 登录链路 | 已完成 | 已完成 provider=ldap 真实 Bind 登录与本地用户映射签发 |
+| T128 | P901-C：联调与验收 | 已完成 | 已通过 go test、frontend build、scripts/p901_ldap_bind_smoke_test.sh |
+| T129 | 会话恢复后任务进度核对与文档对齐 | 已完成 | 已核对代码与文档偏差，修正 P801/P901 状态口径并补充 2026-04-02 复测记录 |
 
 ## 完成记录
 
@@ -339,3 +345,13 @@
 - 2026-04-01：完成 T123（登录接口支持 provider，前端登录页新增认证源选择）
 - 2026-04-01：完成 T124（go test ./...、npm run build、scripts/p801_auth_provider_smoke_test.sh 通过）
 - 2026-04-01：完成 P801（认证源管理基础能力交付并验收通过）
+- 2026-04-01：完成 T125（P901 前置：创建 feature/p901-ldap-bind-mvp，并完成数据库备份 backups/kubemanage-20260401-221003-p901.sql）
+- 2026-04-01：完成 T126（P901：README/TASKS 同步第九阶段范围、拆分与状态）
+- 2026-04-01：启动 T127（接入 provider=ldap 真实登录链路与 LDAP 配置解析）
+- 2026-04-01：完成阶段验证（go test ./...、npm run build、scripts/p801_auth_provider_smoke_test.sh 通过）
+- 2026-04-01：T127 进入阻塞（scripts/p901_ldap_bind_smoke_test.sh 登录返回 502，LDAP 连接被重置，待专项排查）
+- 2026-04-02：完成会话恢复后复核（go test ./...、npm run build 通过；scripts/p901_ldap_bind_smoke_test.sh 仍返回 502）
+- 2026-04-02：完成 T129（修正 README 的 P801 502 口径，更新 T128 为“进行中（阻塞）”并同步 TASKS 更新时间）
+- 2026-04-02：完成 P901 冒烟脚本修正（修复 LDAP_USER_FILTER 默认占位符截断；默认端口改为 31389 映射容器 10389；默认测试账号调整为 fry/fry）
+- 2026-04-02：完成 T127/T128（go test ./...、npm run build、scripts/p901_ldap_bind_smoke_test.sh 全部通过）
+- 2026-04-02：完成 P901（真实 LDAP Bind 最小闭环交付并验收通过）

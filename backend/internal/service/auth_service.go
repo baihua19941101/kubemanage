@@ -7,12 +7,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"kubeManage/backend/internal/infra"
 
+	ldap "github.com/go-ldap/ldap/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -53,7 +57,8 @@ var (
 	ErrAuthProviderDisabled  = errors.New("auth provider is disabled")
 	ErrAuthProviderType      = errors.New("auth provider type not supported")
 	ErrAuthProviderName      = errors.New("auth provider name is required")
-	ErrLDAPNotImplemented    = errors.New("ldap auth is not implemented yet")
+	ErrLDAPConfigInvalid     = errors.New("ldap provider config invalid")
+	ErrLDAPUnavailable       = errors.New("ldap provider unavailable")
 )
 
 type AuthIdentity struct {
@@ -273,18 +278,33 @@ func (s *AuthService) Login(ctx context.Context, username, password, provider st
 	if s.db == nil {
 		return AuthTokenPair{}, ErrAuthDBNotEnabled
 	}
-	providerType, err := s.resolveProviderType(ctx, provider)
+	providerRecord, err := s.resolveProvider(ctx, provider)
 	if err != nil {
 		return AuthTokenPair{}, err
 	}
+	providerType := normalizeProviderType(providerRecord.Type)
+	username = strings.TrimSpace(username)
 	if providerType == "ldap" {
-		return AuthTokenPair{}, ErrLDAPNotImplemented
+		if err := s.authenticateLDAP(ctx, providerRecord, username, password); err != nil {
+			return AuthTokenPair{}, err
+		}
+		var user infra.UserRecord
+		if err := s.db.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return AuthTokenPair{}, ErrInvalidCredentials
+			}
+			return AuthTokenPair{}, err
+		}
+		if !user.IsActive {
+			return AuthTokenPair{}, ErrUserDisabled
+		}
+		return s.issueTokenPair(ctx, user)
 	}
 	if providerType != "local" {
 		return AuthTokenPair{}, ErrAuthProviderType
 	}
 	var user infra.UserRecord
-	if err := s.db.WithContext(ctx).Where("username = ?", strings.TrimSpace(username)).First(&user).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return AuthTokenPair{}, ErrInvalidCredentials
 		}
@@ -746,33 +766,116 @@ func normalizeProviderType(providerType string) string {
 	return strings.ToLower(strings.TrimSpace(providerType))
 }
 
-func (s *AuthService) resolveProviderType(ctx context.Context, provider string) (string, error) {
+func (s *AuthService) resolveProvider(ctx context.Context, provider string) (*infra.AuthProviderRecord, error) {
 	p := strings.TrimSpace(provider)
 	if p == "" {
 		var defaultRecord infra.AuthProviderRecord
 		if err := s.db.WithContext(ctx).Where("is_default = ?", true).First(&defaultRecord).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return "local", nil
+				return &infra.AuthProviderRecord{
+					Name:      "local",
+					Type:      "local",
+					IsEnabled: true,
+					IsDefault: true,
+				}, nil
 			}
-			return "", err
+			return nil, err
 		}
 		if !defaultRecord.IsEnabled {
-			return "", ErrAuthProviderDisabled
+			return nil, ErrAuthProviderDisabled
 		}
-		return normalizeProviderType(defaultRecord.Type), nil
+		return &defaultRecord, nil
 	}
 
 	var record infra.AuthProviderRecord
 	if err := s.db.WithContext(ctx).Where("name = ?", p).First(&record).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", ErrAuthProviderNotFound
+			return nil, ErrAuthProviderNotFound
 		}
-		return "", err
+		return nil, err
 	}
 	if !record.IsEnabled {
-		return "", ErrAuthProviderDisabled
+		return nil, ErrAuthProviderDisabled
 	}
-	return normalizeProviderType(record.Type), nil
+	return &record, nil
+}
+
+func (s *AuthService) authenticateLDAP(ctx context.Context, provider *infra.AuthProviderRecord, username, password string) error {
+	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
+		return ErrInvalidCredentials
+	}
+	cfg := decodeProviderConfig(provider.Config)
+	rawURL := strings.TrimSpace(cfg["url"])
+	baseDN := strings.TrimSpace(cfg["baseDN"])
+	if rawURL == "" || baseDN == "" {
+		return ErrLDAPConfigInvalid
+	}
+
+	loginAttr := strings.TrimSpace(cfg["loginAttr"])
+	if loginAttr == "" {
+		loginAttr = "uid"
+	}
+
+	filter := strings.TrimSpace(cfg["userFilter"])
+	escapedUser := ldap.EscapeFilter(username)
+	if filter == "" {
+		filter = fmt.Sprintf("(%s=%s)", loginAttr, escapedUser)
+	} else {
+		filter = strings.ReplaceAll(filter, "{{username}}", escapedUser)
+		filter = strings.ReplaceAll(filter, "{{loginAttr}}", loginAttr)
+	}
+
+	timeoutSeconds := 5
+	if rawTimeout := strings.TrimSpace(cfg["timeoutSeconds"]); rawTimeout != "" {
+		if parsed, err := strconv.Atoi(rawTimeout); err == nil && parsed > 0 {
+			timeoutSeconds = parsed
+		}
+	}
+
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return ErrLDAPConfigInvalid
+	}
+	timeout := time.Duration(timeoutSeconds) * time.Second
+	dialer := &net.Dialer{Timeout: timeout}
+	conn, err := ldap.DialURL(rawURL, ldap.DialWithDialer(dialer))
+	if err != nil {
+		return ErrLDAPUnavailable
+	}
+	defer conn.Close()
+	conn.SetTimeout(timeout)
+
+	bindDN := strings.TrimSpace(cfg["bindDN"])
+	bindPassword := strings.TrimSpace(cfg["bindPassword"])
+	if bindDN != "" {
+		if err := conn.Bind(bindDN, bindPassword); err != nil {
+			return ErrLDAPUnavailable
+		}
+	}
+
+	searchReq := ldap.NewSearchRequest(
+		baseDN,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 2, int(timeout.Seconds()), false,
+		filter,
+		[]string{"dn"},
+		nil,
+	)
+	searchResult, err := conn.Search(searchReq)
+	if err != nil {
+		return ErrLDAPUnavailable
+	}
+	if len(searchResult.Entries) != 1 {
+		return ErrInvalidCredentials
+	}
+
+	userDN := searchResult.Entries[0].DN
+	if strings.TrimSpace(userDN) == "" {
+		return ErrInvalidCredentials
+	}
+	if err := conn.Bind(userDN, password); err != nil {
+		return ErrInvalidCredentials
+	}
+	return nil
 }
 
 func encodeProviderConfig(cfg map[string]string) string {

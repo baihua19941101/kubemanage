@@ -897,7 +897,7 @@ bash scripts/p801_auth_provider_smoke_test.sh
 
 #### 能力范围
 - 后端新增认证源模型与管理接口（列表、创建、启停、设为默认）
-- 登录接口支持 `provider` 入参；若选择 `ldap`，返回明确“未实现”错误，避免静默回退
+- 登录接口支持 `provider` 入参；若选择 `ldap` 且 LDAP 不可用，返回明确 `502 unavailable` 错误，避免静默回退
 - 前端登录页增加认证源选择（默认跟随后端返回的默认 provider）
 
 #### 开发拆分
@@ -911,10 +911,33 @@ bash scripts/p801_auth_provider_smoke_test.sh
 - 已交付：
   - 认证源模型 `auth_providers`（`local/ldap`）及默认初始化
   - 认证源接口：`GET /auth/providers/public`、`GET /auth/providers`、`POST /auth/providers`、`PATCH /auth/providers/:id/status`、`POST /auth/providers/:id/default`
-  - 登录接口支持 `provider` 参数（默认 provider 为 `ldap` 时返回 `501 not implemented`）
+  - 登录接口支持 `provider` 参数（默认 provider 为 `ldap` 且 LDAP 不可用时返回 `502 unavailable`）
   - 前端登录页新增认证源选择器（默认读取后端公开认证源）
   - `scripts/p801_auth_provider_smoke_test.sh` 冒烟脚本
 - 验证结果：`go test ./...`、`npm run build`、`scripts/p801_auth_provider_smoke_test.sh` 全部通过
+
+### P901 计划（2026-04-01）
+
+#### 范围定义
+- 目标：打通真实 LDAP Bind 最小闭环，让 `provider=ldap` 可完成账号密码登录
+- 本轮不纳入：OAuth 回调、LDAP 用户自动同步、本地用户自动映射策略引擎
+
+#### 能力范围
+- 后端登录链路在 `provider=ldap` 时执行真实 LDAP 连接与 Bind 校验
+- LDAP 认证源配置支持 `url/baseDN/bindDN/bindPassword/userFilter/loginAttr`
+- 认证成功后返回 JWT（采用“按用户名自动映射本地用户，缺失则拒绝”的最小策略）
+
+#### 开发拆分
+1. `P901-A`：LDAP 客户端与配置解析
+2. `P901-B`：登录链路接入 LDAP Bind 与错误语义
+3. `P901-C`：冒烟脚本与文档验收
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：`feature/p901-ldap-bind-mvp` 分支创建、数据库备份 `backups/kubemanage-20260401-221003-p901.sql`
+- 已完成开发：后端 LDAP 登录链路代码接入（provider=ldap 走真实 Bind）、新增 `scripts/p901_ldap_bind_smoke_test.sh`
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p901_ldap_bind_smoke_test.sh` 通过
+- 冒烟修正：已修复脚本默认 `LDAP_USER_FILTER` 占位符截断问题，切换本地测试端口映射为容器 `10389`，并将默认测试账号调整为 `fry/fry`
 
 ### 第二阶段任务清单（Rancher 风格重构）
 
@@ -926,7 +949,7 @@ bash scripts/p801_auth_provider_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第八阶段（P801 已完成）`
-- 当前任务：`P801：认证源管理基础能力（local/ldap）（已完成）`
-- 当前状态：`已交付认证源模型、管理接口、登录 provider 语义与登录页选择器`
-- 下一任务：`第九阶段规划（真实 LDAP Bind 与 OAuth 回调接入）`
+- 当前阶段：`第九阶段（P901 已完成）`
+- 当前任务：`P901：真实 LDAP Bind 最小闭环（已完成）`
+- 当前状态：`LDAP provider 登录闭环已打通，代码与冒烟验证通过`
+- 下一任务：`规划并接入 OAuth 回调链路（下一阶段）`
