@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第二十阶段（P1401 已完成）
+- 阶段：第二十阶段（P1402 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -232,15 +232,17 @@
 | T191 | YAML 保存元信息展示增强 | 已完成 | YamlDialog 已显示最近保存时间、最近 requestId 与最近保存历史 |
 | T192 | YAML 保存历史按资源隔离 | 已完成 | 已按“资源类型+名称”独立记录保存历史，切换资源不互相覆盖 |
 | T193 | 会话收口：停止新功能开发并同步进度 | 已完成 | 已停止继续开发，仅更新 README/TASKS 最新状态并等待下一轮优先级 |
-| P1401 | 第二十阶段任务1：前端 Pod 终端实操化（xterm） | 已完成 | 已完成 xterm 终端接入、页面集成与构建回归 |
-| T194 | P1401-A：前置备份与 README/TASKS 计划同步 | 已完成 | 已创建 feature/p1401-terminal-ui 并完成备份 backups/kubemanage-20260402-154417-p1401.sql |
-| T195 | P1401-B：前端终端组件接入 | 已完成 | 已新增 TerminalDialog，完成 xterm + ws 输入输出与自适应 |
-| T196 | P1401-C：页面集成与交互完善 | 已完成 | 已完成日志弹窗接入、自动连接、状态提示与手动重连 |
-| T197 | P1401-D：联调与验收 | 已完成 | 已通过 go test ./... 与 frontend npm run build |
-| T198 | P1401 修复：终端弹窗 idle 不连接 | 已完成 | 已修复 Dialog 挂载时序导致的 idle，补充 Vite `/api` ws 代理开关 |
-| T199 | P1401 修复：终端连接异常（session 一次性消费） | 已完成 | 已改为每次连接/重连先创建新 session，再建立 ws 连接 |
-| T200 | P1401 修复：ws owner mismatch 与 session 过早消费 | 已完成 | 后端改为先校验 owner 再 consume，并支持 ws query 透传 user/role 进行身份匹配 |
-| T201 | P1401 修复：终端键盘输入逐字符误执行 | 已完成 | 已移除 ws 输入转发时强制追加换行，按原始按键流透传到容器 stdin |
+| P1402 | 第二十阶段任务1：Workload 列表右侧操作菜单拆分 | 已完成 | 已完成首版、补充改造与二次交互收敛 |
+| T194 | P1402-A：前置备份与 README/TASKS 计划同步 | 已完成 | 已创建 feature/p1402-workload-row-actions，并完成备份 backups/kubemanage-20260402-163350-p1402.sql |
+| T195 | P1402-B：列表右侧 `...` 操作列改造 | 已完成 | 已在 6 类 Workload 列表右侧新增操作列与菜单按钮 |
+| T196 | P1402-C：能力迁移与交互打通 | 已完成 | 已迁移 Shell/Logs/Show Configuration/Edit YAML/DownLoad YAML |
+| T197 | P1402-D：Clone/Delete 占位与联调验收 | 已完成 | 已完成 Clone/Delete 菜单占位提示，frontend npm run build 通过 |
+| T198 | P1402 补充：Execute Shell 直连终端 | 已完成 | 已接入 TerminalDialog，菜单点击可直接进入交互终端 |
+| T199 | P1402 补充：View Logs 去除终端入口 | 已完成 | 日志弹窗已移除“打开终端”按钮 |
+| T200 | P1402 补充：Edit YAML 仅保留纯编辑 | 已完成 | 菜单 Edit YAML 仅打开 YAML 编辑弹窗 |
+| T201 | P1402 二次调整：去除日志终端提示 | 已完成 | 日志弹窗已去除 `terminal bridge ready` 提示与终端入口干扰信息 |
+| T202 | P1402 二次调整：菜单动作去详情耦合 | 已完成 | Execute Shell/View Logs/Edit YAML 均不再触发详情抽屉 |
+| T203 | P1402 二次调整：Show Configuration 改 YAML 查看 | 已完成 | Show Configuration 现为 YAML 查看（只读） |
 
 ## 完成记录
 
@@ -504,11 +506,13 @@
 - 2026-04-02：完成 T191（YAML 弹窗新增保存元信息展示：最近保存时间/requestId/历史）
 - 2026-04-02：完成 T192（YAML 保存历史改为按资源隔离记录，避免跨资源覆盖）
 - 2026-04-02：完成 T193（按指令停止新功能开发，并完成 README/TASKS 收口同步）
-- 2026-04-02：完成 T194（P1401 前置：origin/main 新分支与数据库备份，并同步 README/TASKS 计划）
-- 2026-04-02：完成 T195（接入 xterm 终端组件，打通 WebSocket 输入输出与自适应）
-- 2026-04-02：完成 T196（Workload 日志弹窗集成真实终端，支持自动连接与手动重连）
-- 2026-04-02：完成 T197（P1401 联调验收：go test ./...、npm run build 通过）
-- 2026-04-02：完成 T198（修复终端弹窗 idle：等待容器挂载后初始化终端，并启用 Vite ws 代理）
-- 2026-04-02：完成 T199（修复终端连接异常：改为每次连接新建 session，避免一次性 session 复用失效）
-- 2026-04-02：完成 T200（修复 ws owner mismatch：前端透传 user/role，后端先 owner 校验后再消费 session）
-- 2026-04-02：完成 T201（修复终端输入兼容：移除每次按键后端追加换行，避免 `a` 被当命令执行）
+- 2026-04-02：完成 T194（P1402 前置：origin/main 新分支、数据库备份、README/TASKS 计划同步）
+- 2026-04-02：完成 T195（Workload 6 类列表新增右侧 `...` 操作列）
+- 2026-04-02：完成 T196（菜单动作迁移：Execute Shell/View Logs/Show Configuration/Edit YAML/DownLoad YAML）
+- 2026-04-02：完成 T197（Clone/Delete 灰态占位与前端构建验收通过）
+- 2026-04-02：完成 T198（Execute Shell 直连交互终端，支持菜单直接打开终端弹窗）
+- 2026-04-02：完成 T199（View Logs 弹窗移除“打开终端”入口）
+- 2026-04-02：完成 T200（Edit YAML 仅保留纯编辑入口，并完成前后端回归验证）
+- 2026-04-02：完成 T201（去除日志页 terminal bridge 提示，避免误导与干扰）
+- 2026-04-02：完成 T202（菜单动作去详情耦合：Shell/Logs/Edit YAML 不再打开详情）
+- 2026-04-02：完成 T203（Show Configuration 改为 YAML 只读查看，并通过回归验证）

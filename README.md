@@ -1258,31 +1258,39 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build` 通过
 - 当前任务：`P1307 已收口`
 
-### P1401 计划（2026-04-02）
+### P1402 计划（2026-04-02）
 
 #### 范围定义
-- 目标：将 Pod 终端从“占位提示”升级为可直接交互的前端终端窗口
-- 本轮聚焦：`xterm.js` 终端界面、会话创建后自动连接 WebSocket、断开与错误提示、手动重连
-- 本轮不纳入：文件上传下载、多标签终端、会话共享
+- 目标：将 Workload 列表操作从“行点击后抽屉”拆分为“每行右侧 `...` 操作菜单”
+- 本轮聚焦：操作入口重构与交互对齐 Rancher 风格
+- 本轮不纳入：后端新建 Clone/Delete API（当前仅做前端占位与能力提示）
 
 #### 能力范围
-- 前端接入 `xterm` + `xterm-addon-fit`，在 Pod 日志弹窗中提供终端交互面板
-- 复用现有 `/api/v1/pods/:name/terminal/sessions` 与 `/api/v1/pods/:name/terminal/ws` 链路
-- 保留现有 RBAC、确认头、TTL 与 owner 约束，不放宽后端安全边界
+- 列表右侧新增 `...` 菜单，统一展示：`Execute Shell / View Logs / Show Configuration / Edit YAML / Clone / DownLoad YAML / Delete`
+- 已有能力直接打通：`Execute Shell`（Pod）、`View Logs`（Pod）、`Show Configuration`、`Edit YAML`、`DownLoad YAML`
+- 暂未落地后端能力：`Clone`、`Delete`（菜单保留，灰态提示“待后端能力”）
 
 #### 开发拆分
-1. `P1401-A`：README/TASKS 计划与状态同步 + 开发前备份
-2. `P1401-B`：前端终端组件接入（xterm、ws 连接、输入输出、窗口自适应）
-3. `P1401-C`：页面集成与交互完善（打开/关闭/重连、状态提示、容器选择联动）
-4. `P1401-D`：联调与验收（go test、frontend build、终端链路手工验证）
+1. `P1402-A`：README/TASKS 计划同步 + 开发前备份 + 新分支基线
+2. `P1402-B`：Workload 列表操作列与 `...` 菜单交互改造
+3. `P1402-C`：现有能力迁移（Shell/Logs/Show Configuration/Edit YAML/DownLoad YAML）
+4. `P1402-D`：Clone/Delete 占位策略 + 联调验收（go test、frontend build）
 
 #### 当前状态
-- 状态：`已完成`
-- 已完成前置：数据库备份 `backups/kubemanage-20260402-154417-p1401.sql`
-- 已完成开发：前端接入 `@xterm/xterm` + `@xterm/addon-fit`，支持 Pod 终端输入输出与自适应布局
-- 已完成开发：日志弹窗“打开终端”已切换为真实终端弹窗，支持会话创建后自动连接与手动重连
-- 已完成验证：`go test ./...`、`npm run build` 通过（依赖安装使用 `https://registry.npmmirror.com`）
-- 当前任务：`P1401 已收口`
+- 状态：`已完成（二次调整）`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-163350-p1402.sql`
+- 已完成开发：Workload 6 类资源列表右侧新增 `...` 操作菜单
+- 已完成开发：菜单接入 `Execute Shell / View Logs / Show Configuration / Edit YAML / Clone / DownLoad YAML / Delete`
+- 已完成开发：`Clone/Delete` 以灰态占位提示“待后端能力”，其余能力完成迁移
+- 已完成验证：`frontend npm run build` 通过
+- 补充需求：`Execute Shell` 必须直接打开可交互终端；`View Logs` 去掉“打开终端”；`Edit YAML` 保持纯 YAML 编辑入口
+- 已完成开发：`Execute Shell` 从菜单直接打开交互终端弹窗，可直接执行命令
+- 已完成开发：`View Logs` 弹窗已移除“打开终端”入口
+- 已完成开发：`Edit YAML` 仅保留 YAML 编辑弹窗入口
+- 已完成开发：`Show Configuration` 从详情抽屉改为直接 YAML 查看（只读）
+- 已完成验证：`go test ./...`、`frontend npm run build` 通过
+- 二次调整：去掉日志页 `terminal bridge ready` 提示；菜单动作不再触发详情抽屉；`Show Configuration` 调整为 YAML 查看
+- 当前任务：`P1402 已收口`
 
 ### 第二阶段任务清单（Rancher 风格重构）
 
@@ -1294,7 +1302,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第二十阶段（P1401 已完成）`
-- 当前任务：`P1401：前端 Pod 终端实操化（已完成）`
-- 当前状态：`日志弹窗已支持真实终端连接（xterm + websocket）`
-- 下一任务：`P1402：前端性能优化（按路由与重组件分包，降低首屏体积）`
+- 当前阶段：`第二十阶段（P1402 已完成）`
+- 当前任务：`P1402：列表菜单交互与入口收敛（已完成）`
+- 当前状态：`Execute Shell 直连终端、View Logs 无终端提示、Show Configuration 为 YAML 查看`
+- 下一任务：`P1403：评估是否补齐 Workload Clone/Delete 后端 API`
