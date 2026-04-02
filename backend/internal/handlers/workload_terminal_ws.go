@@ -58,14 +58,12 @@ func (h *WorkloadHandler) TerminalWebSocket(c *gin.Context) {
 	requestUser := strings.TrimSpace(c.GetString("km_user"))
 	requestRole := strings.TrimSpace(c.GetString("km_role"))
 	if requestUser == "" || requestUser == "demo-user" {
-		queryUser := strings.TrimSpace(c.Query("user"))
-		if queryUser != "" {
+		if queryUser := strings.TrimSpace(c.Query("user")); queryUser != "" {
 			requestUser = queryUser
 		}
 	}
 	if requestRole == "" || requestRole == "readonly" {
-		queryRole := strings.TrimSpace(c.Query("role"))
-		if queryRole != "" {
+		if queryRole := strings.TrimSpace(c.Query("role")); queryRole != "" {
 			requestRole = queryRole
 		}
 	}

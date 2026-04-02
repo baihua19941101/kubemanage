@@ -6,13 +6,18 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
+  IconButton,
+  ListItemText,
+  Menu,
   MenuItem,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
 import ResourceTable from "../components/framework/ResourceTable";
@@ -91,6 +96,12 @@ type SaveMeta = {
   history: Array<{ at: string; requestId?: string }>;
 };
 
+type ActionTarget = {
+  name: string;
+  namespace: string;
+  isPod: boolean;
+};
+
 export default function WorkloadPage({ initialMode = "deployments", showModeSwitcher = true }: Props) {
   const deployments = useWorkloadStore((s) => s.deployments);
   const pods = useWorkloadStore((s) => s.pods);
@@ -125,12 +136,15 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [mode, setMode] = useState<WorkloadMode>(initialMode);
   const [keyword, setKeyword] = useState("");
   const [selectedName, setSelectedName] = useState("");
+  const [detailName, setDetailName] = useState("");
   const [yamlOpen, setYamlOpen] = useState(false);
+  const [yamlReadOnly, setYamlReadOnly] = useState(false);
   const [yamlText, setYamlText] = useState("");
   const [yamlError, setYamlError] = useState("");
   const [yamlNotice, setYamlNotice] = useState("");
   const [yamlLoading, setYamlLoading] = useState(false);
   const [yamlSaveMetaByResource, setYamlSaveMetaByResource] = useState<Record<string, SaveMeta>>({});
+
   const [logsOpen, setLogsOpen] = useState(false);
   const [rawLogsText, setRawLogsText] = useState("");
   const [logKeyword, setLogKeyword] = useState("");
@@ -141,9 +155,11 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [logFollow, setLogFollow] = useState(false);
   const [logsError, setLogsError] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
-  const [terminalNotice, setTerminalNotice] = useState("");
-  const [terminalOpen, setTerminalOpen] = useState(false);
   const [logsNotice, setLogsNotice] = useState("");
+
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [actionAnchorEl, setActionAnchorEl] = useState<HTMLElement | null>(null);
+  const [actionTarget, setActionTarget] = useState<ActionTarget | null>(null);
 
   useEffect(() => {
     void load();
@@ -152,142 +168,128 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   useEffect(() => {
     setMode(initialMode);
     setSelectedName("");
+    setDetailName("");
   }, [initialMode]);
 
   const selectedResourceKey = selectedName ? `${mode}:${selectedName}` : "";
   const selectedSaveMeta = selectedResourceKey ? yamlSaveMetaByResource[selectedResourceKey] : undefined;
 
   const lowerKeyword = keyword.toLowerCase().trim();
+  const filteredDeployments = useMemo(() => deployments.filter((d) => d.name.toLowerCase().includes(lowerKeyword)), [deployments, lowerKeyword]);
+  const filteredPods = useMemo(() => pods.filter((p) => p.name.toLowerCase().includes(lowerKeyword)), [pods, lowerKeyword]);
+  const filteredStatefulSets = useMemo(() => statefulSets.filter((s) => s.name.toLowerCase().includes(lowerKeyword)), [statefulSets, lowerKeyword]);
+  const filteredDaemonSets = useMemo(() => daemonSets.filter((d) => d.name.toLowerCase().includes(lowerKeyword)), [daemonSets, lowerKeyword]);
+  const filteredJobs = useMemo(() => jobs.filter((j) => j.name.toLowerCase().includes(lowerKeyword)), [jobs, lowerKeyword]);
+  const filteredCronJobs = useMemo(() => cronJobs.filter((c) => c.name.toLowerCase().includes(lowerKeyword)), [cronJobs, lowerKeyword]);
 
-  const filteredDeployments = useMemo(
-    () => deployments.filter((d) => d.name.toLowerCase().includes(lowerKeyword)),
-    [deployments, lowerKeyword]
-  );
-  const filteredPods = useMemo(
-    () => pods.filter((p) => p.name.toLowerCase().includes(lowerKeyword)),
-    [pods, lowerKeyword]
-  );
-  const filteredStatefulSets = useMemo(
-    () => statefulSets.filter((s) => s.name.toLowerCase().includes(lowerKeyword)),
-    [statefulSets, lowerKeyword]
-  );
-  const filteredDaemonSets = useMemo(
-    () => daemonSets.filter((d) => d.name.toLowerCase().includes(lowerKeyword)),
-    [daemonSets, lowerKeyword]
-  );
-  const filteredJobs = useMemo(
-    () => jobs.filter((j) => j.name.toLowerCase().includes(lowerKeyword)),
-    [jobs, lowerKeyword]
-  );
-  const filteredCronJobs = useMemo(
-    () => cronJobs.filter((c) => c.name.toLowerCase().includes(lowerKeyword)),
-    [cronJobs, lowerKeyword]
-  );
+  const selectedDeployment = deployments.find((x) => x.name === detailName) ?? null;
+  const selectedPod = pods.find((x) => x.name === detailName) ?? null;
+  const selectedStatefulSet = statefulSets.find((x) => x.name === detailName) ?? null;
+  const selectedDaemonSet = daemonSets.find((x) => x.name === detailName) ?? null;
+  const selectedJob = jobs.find((x) => x.name === detailName) ?? null;
+  const selectedCronJob = cronJobs.find((x) => x.name === detailName) ?? null;
 
-  const selectedDeployment = deployments.find((x) => x.name === selectedName) ?? null;
-  const selectedPod = pods.find((x) => x.name === selectedName) ?? null;
-  const selectedStatefulSet = statefulSets.find((x) => x.name === selectedName) ?? null;
-  const selectedDaemonSet = daemonSets.find((x) => x.name === selectedName) ?? null;
-  const selectedJob = jobs.find((x) => x.name === selectedName) ?? null;
-  const selectedCronJob = cronJobs.find((x) => x.name === selectedName) ?? null;
-
-  const visibleLogLines = useMemo(
-    () => rawLogsText.split("\n").filter((line) => line.length > 0),
-    [rawLogsText]
-  );
-
+  const visibleLogLines = useMemo(() => rawLogsText.split("\n").filter((line) => line.length > 0), [rawLogsText]);
   const matchedLogCount = useMemo(() => {
-    if (!logKeyword.trim()) {
-      return visibleLogLines.length;
-    }
+    if (!logKeyword.trim()) return visibleLogLines.length;
     const needle = logCaseSensitive ? logKeyword : logKeyword.toLowerCase();
-    return visibleLogLines.filter((line) => {
-      const haystack = logCaseSensitive ? line : line.toLowerCase();
-      return haystack.includes(needle);
-    }).length;
+    return visibleLogLines.filter((line) => (logCaseSensitive ? line : line.toLowerCase()).includes(needle)).length;
   }, [logCaseSensitive, logKeyword, visibleLogLines]);
 
-  const deploymentColumns = [
-    { key: "name", header: "名称", render: (r: DeploymentRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: DeploymentRow) => r.namespace },
-    { key: "image", header: "镜像", render: (r: DeploymentRow) => r.image },
-    { key: "replicas", header: "副本", render: (r: DeploymentRow) => `${r.ready}/${r.replicas}` },
-    { key: "age", header: "Age", render: (r: DeploymentRow) => r.age }
-  ];
+  function openActionMenu(event: React.MouseEvent<HTMLElement>, row: { name: string; namespace: string }, isPod: boolean) {
+    event.stopPropagation();
+    setActionAnchorEl(event.currentTarget);
+    setActionTarget({ name: row.name, namespace: row.namespace, isPod });
+  }
 
-  const podColumns = [
-    { key: "name", header: "名称", render: (r: PodRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: PodRow) => r.namespace },
-    { key: "status", header: "状态", render: (r: PodRow) => r.status },
-    { key: "node", header: "节点", render: (r: PodRow) => r.node },
-    { key: "age", header: "Age", render: (r: PodRow) => r.age }
-  ];
+  function closeActionMenu() {
+    setActionAnchorEl(null);
+    setActionTarget(null);
+  }
 
-  const statefulColumns = [
-    { key: "name", header: "名称", render: (r: StatefulSetRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: StatefulSetRow) => r.namespace },
-    { key: "service", header: "服务名", render: (r: StatefulSetRow) => r.service },
-    { key: "replicas", header: "副本", render: (r: StatefulSetRow) => `${r.ready}/${r.replicas}` },
-    { key: "age", header: "Age", render: (r: StatefulSetRow) => r.age }
-  ];
+  function withActionCol<T extends { name: string; namespace: string }>(base: Array<{ key: string; header: string; render: (row: T) => ReactNode }>, isPod: boolean) {
+    return [
+      ...base,
+      {
+        key: "actions",
+        header: "",
+        render: (r: T) => (
+          <IconButton size="small" onClick={(e) => openActionMenu(e, r, isPod)}>
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        )
+      }
+    ];
+  }
 
-  const daemonColumns = [
-    { key: "name", header: "名称", render: (r: DaemonSetRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: DaemonSetRow) => r.namespace },
-    { key: "image", header: "镜像", render: (r: DaemonSetRow) => r.image },
-    { key: "desired", header: "期望/当前", render: (r: DaemonSetRow) => `${r.current}/${r.desired}` },
-    { key: "age", header: "Age", render: (r: DaemonSetRow) => r.age }
-  ];
+  const deploymentColumns = withActionCol<DeploymentRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "image", header: "镜像", render: (r) => r.image },
+    { key: "replicas", header: "副本", render: (r) => `${r.ready}/${r.replicas}` },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], false);
 
-  const jobColumns = [
-    { key: "name", header: "名称", render: (r: JobRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: JobRow) => r.namespace },
-    { key: "status", header: "状态", render: (r: JobRow) => r.status },
-    { key: "comp", header: "完成/失败", render: (r: JobRow) => `${r.completions}/${r.failed}` },
-    { key: "age", header: "Age", render: (r: JobRow) => r.age }
-  ];
+  const podColumns = withActionCol<PodRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "status", header: "状态", render: (r) => r.status },
+    { key: "node", header: "节点", render: (r) => r.node },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], true);
 
-  const cronColumns = [
-    { key: "name", header: "名称", render: (r: CronJobRow) => r.name },
-    { key: "ns", header: "命名空间", render: (r: CronJobRow) => r.namespace },
-    { key: "schedule", header: "调度", render: (r: CronJobRow) => r.schedule },
-    { key: "suspend", header: "暂停", render: (r: CronJobRow) => (r.suspend ? "是" : "否") },
-    { key: "age", header: "Age", render: (r: CronJobRow) => r.age }
-  ];
+  const statefulColumns = withActionCol<StatefulSetRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "service", header: "服务名", render: (r) => r.service },
+    { key: "replicas", header: "副本", render: (r) => `${r.ready}/${r.replicas}` },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], false);
 
-  const drawerOpen = selectedName.length > 0;
-  const currentLabel =
-    mode === "deployments"
-      ? "Deployment"
-      : mode === "pods"
-        ? "Pod"
-        : mode === "statefulsets"
-          ? "StatefulSet"
-          : mode === "daemonsets"
-            ? "DaemonSet"
-            : mode === "jobs"
-              ? "Job"
-              : "CronJob";
+  const daemonColumns = withActionCol<DaemonSetRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "image", header: "镜像", render: (r) => r.image },
+    { key: "desired", header: "期望/当前", render: (r) => `${r.current}/${r.desired}` },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], false);
 
-  async function openYaml() {
-    if (!selectedName) return;
+  const jobColumns = withActionCol<JobRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "status", header: "状态", render: (r) => r.status },
+    { key: "comp", header: "完成/失败", render: (r) => `${r.completions}/${r.failed}` },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], false);
+
+  const cronColumns = withActionCol<CronJobRow>([
+    { key: "name", header: "名称", render: (r) => r.name },
+    { key: "ns", header: "命名空间", render: (r) => r.namespace },
+    { key: "schedule", header: "调度", render: (r) => r.schedule },
+    { key: "suspend", header: "暂停", render: (r) => (r.suspend ? "是" : "否") },
+    { key: "age", header: "Age", render: (r) => r.age }
+  ], false);
+
+  const drawerOpen = detailName.length > 0;
+  const currentLabel = mode === "deployments" ? "Deployment" : mode === "pods" ? "Pod" : mode === "statefulsets" ? "StatefulSet" : mode === "daemonsets" ? "DaemonSet" : mode === "jobs" ? "Job" : "CronJob";
+
+  async function openYaml(name?: string, readonly = false) {
+    const targetName = name || selectedName;
+    if (!targetName) return;
+    setSelectedName(targetName);
+    setYamlReadOnly(readonly);
     setYamlLoading(true);
     setYamlError("");
     setYamlNotice("");
     try {
-      if (mode === "deployments") {
-        setYamlText(await getDeploymentYAML(selectedName));
-      } else if (mode === "pods") {
-        setYamlText(await getPodYAML(selectedName));
-      } else if (mode === "statefulsets") {
-        setYamlText(await getStatefulSetYAML(selectedName));
-      } else if (mode === "daemonsets") {
-        setYamlText(await getDaemonSetYAML(selectedName));
-      } else if (mode === "jobs") {
-        setYamlText(await getJobYAML(selectedName));
-      } else {
-        setYamlText(await getCronJobYAML(selectedName));
-      }
+      const yaml =
+        mode === "deployments" ? await getDeploymentYAML(targetName) :
+        mode === "pods" ? await getPodYAML(targetName) :
+        mode === "statefulsets" ? await getStatefulSetYAML(targetName) :
+        mode === "daemonsets" ? await getDaemonSetYAML(targetName) :
+        mode === "jobs" ? await getJobYAML(targetName) :
+        await getCronJobYAML(targetName);
+      setYamlText(yaml);
       setYamlOpen(true);
     } catch (err) {
       setYamlError(err instanceof Error ? err.message : "打开 YAML 失败");
@@ -302,22 +304,16 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     setYamlLoading(true);
     setYamlError("");
     setYamlNotice("");
-    let result: { ok: true; requestId?: string } | null = null;
     try {
-      if (mode === "deployments") {
-        result = await saveDeploymentYAML(selectedName, yaml);
-      } else if (mode === "pods") {
-        result = await savePodYAML(selectedName, yaml);
-      } else if (mode === "statefulsets") {
-        result = await saveStatefulSetYAML(selectedName, yaml);
-      } else if (mode === "daemonsets") {
-        result = await saveDaemonSetYAML(selectedName, yaml);
-      } else if (mode === "jobs") {
-        result = await saveJobYAML(selectedName, yaml);
-      } else {
-        result = await saveCronJobYAML(selectedName, yaml);
-      }
-      if (result && result.ok) {
+      const result =
+        mode === "deployments" ? await saveDeploymentYAML(selectedName, yaml) :
+        mode === "pods" ? await savePodYAML(selectedName, yaml) :
+        mode === "statefulsets" ? await saveStatefulSetYAML(selectedName, yaml) :
+        mode === "daemonsets" ? await saveDaemonSetYAML(selectedName, yaml) :
+        mode === "jobs" ? await saveJobYAML(selectedName, yaml) :
+        await saveCronJobYAML(selectedName, yaml);
+
+      if (result?.ok) {
         await load();
         setYamlText(yaml);
         const savedAt = new Date().toISOString();
@@ -333,8 +329,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             }
           };
         });
-        const requestIdText = savedRequestId ? `（requestId: ${savedRequestId}）` : "";
-        setYamlNotice(`${currentLabel} YAML 保存成功${requestIdText}`);
+        setYamlNotice(`${currentLabel} YAML 保存成功${savedRequestId ? `（requestId: ${savedRequestId}）` : ""}`);
       } else {
         setYamlError("保存 YAML 失败，请检查权限与请求参数");
       }
@@ -345,9 +340,10 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
-  async function openLogs() {
-    if (!selectedName) return;
-    setTerminalNotice("");
+  async function openLogs(name?: string) {
+    const targetName = name || selectedName;
+    if (!targetName) return;
+    setSelectedName(targetName);
     setLogsNotice("");
     setLogKeyword("");
     setLogContainer("");
@@ -360,14 +356,13 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     setLogsOpen(true);
     setLogsLoading(true);
     try {
-      const capabilities = await getTerminalCapabilities(selectedName);
-      setTerminalNotice(capabilities.message);
+      const capabilities = await getTerminalCapabilities(targetName);
       setLogContainers(capabilities.containers || []);
       if ((capabilities.containers || []).length > 0) {
         setLogContainer(capabilities.containers![0]);
       }
-    } catch (err) {
-      setTerminalNotice(err instanceof Error ? err.message : "获取终端能力失败");
+    } catch {
+      // ignore capabilities errors for logs panel
     } finally {
       setLogsLoading(false);
     }
@@ -393,9 +388,10 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
-  async function openTerminal() {
-    if (!selectedName) return;
-    setTerminalNotice("");
+  async function openTerminal(name?: string) {
+    const targetName = name || selectedName;
+    if (!targetName) return;
+    setSelectedName(targetName);
     setTerminalOpen(true);
   }
 
@@ -407,13 +403,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     if (!result.wsPath) {
       throw new Error(result.error || "terminal gateway not enabled");
     }
-    const ttlHint =
-      result.ttlSeconds && result.expiresAt
-        ? `（TTL ${result.ttlSeconds}s，过期时间 ${result.expiresAt}）`
-        : result.ttlSeconds
-        ? `（TTL ${result.ttlSeconds}s）`
-        : "";
-    setTerminalNotice(`终端会话已创建${ttlHint}`);
     const url = new URL(result.wsPath, window.location.origin);
     url.searchParams.set("user", currentUser || "demo-user");
     url.searchParams.set("role", currentRole || "readonly");
@@ -439,8 +428,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
   function downloadLogs() {
     if (!selectedName) return;
-    const content = rawLogsText;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([rawLogsText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -451,6 +439,53 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     URL.revokeObjectURL(url);
   }
 
+  async function downloadYaml(name?: string) {
+    const targetName = name || selectedName;
+    if (!targetName) return;
+    setSelectedName(targetName);
+    setYamlError("");
+    try {
+      const yaml =
+        mode === "deployments" ? await getDeploymentYAML(targetName) :
+        mode === "pods" ? await getPodYAML(targetName) :
+        mode === "statefulsets" ? await getStatefulSetYAML(targetName) :
+        mode === "daemonsets" ? await getDaemonSetYAML(targetName) :
+        mode === "jobs" ? await getJobYAML(targetName) :
+        await getCronJobYAML(targetName);
+      const blob = new Blob([yaml], { type: "application/yaml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${targetName}.yaml`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setYamlError(err instanceof Error ? err.message : "下载 YAML 失败");
+    }
+  }
+
+  async function runMenuAction(action: "shell" | "logs" | "show" | "yaml" | "clone" | "download" | "delete") {
+    if (!actionTarget) return;
+    if (action === "shell") {
+      await openTerminal(actionTarget.name);
+    } else if (action === "logs") {
+      await openLogs(actionTarget.name);
+    } else if (action === "show") {
+      await openYaml(actionTarget.name, true);
+    } else if (action === "yaml") {
+      await openYaml(actionTarget.name, false);
+    } else if (action === "download") {
+      await downloadYaml(actionTarget.name);
+    } else if (action === "clone") {
+      setYamlNotice("Clone 功能待后端能力支持");
+    } else if (action === "delete") {
+      setYamlNotice("Delete 功能待后端能力支持");
+    }
+    closeActionMenu();
+  }
+
   useEffect(() => {
     if (!logsOpen || !selectedName) return;
     void refreshLogs();
@@ -458,9 +493,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
   useEffect(() => {
     if (!logsOpen || !selectedName || !logFollow) return;
-    const timer = window.setInterval(() => {
-      void refreshLogs();
-    }, 2000);
+    const timer = window.setInterval(() => void refreshLogs(), 2000);
     return () => window.clearInterval(timer);
   }, [logsOpen, selectedName, logFollow, logContainer, logKeyword, logCaseSensitive, logMatchOnly]);
 
@@ -479,100 +512,38 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Button variant={mode === "cronjobs" ? "contained" : "outlined"} onClick={() => setMode("cronjobs")}>CronJob</Button>
           </Stack>
         ) : null}
-        toolbar={
-          <TextField
-            size="small"
-            label="按名称筛选"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            sx={{ width: 280 }}
-          />
-        }
+        toolbar={<TextField size="small" label="按名称筛选" value={keyword} onChange={(e) => setKeyword(e.target.value)} sx={{ width: 280 }} />}
       >
         {error && <Alert severity="error" sx={{ m: 1.5 }}>{error}</Alert>}
         {yamlError && <Alert severity="error" sx={{ m: 1.5 }}>{yamlError}</Alert>}
         {yamlNotice && <Alert severity="success" sx={{ m: 1.5 }}>{yamlNotice}</Alert>}
 
-        {mode === "deployments" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredDeployments}
-            rowKey={(r) => r.name}
-            columns={deploymentColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
-
-        {mode === "pods" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredPods}
-            rowKey={(r) => r.name}
-            columns={podColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
-
-        {mode === "statefulsets" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredStatefulSets}
-            rowKey={(r) => r.name}
-            columns={statefulColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
-
-        {mode === "daemonsets" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredDaemonSets}
-            rowKey={(r) => r.name}
-            columns={daemonColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
-
-        {mode === "jobs" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredJobs}
-            rowKey={(r) => r.name}
-            columns={jobColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
-
-        {mode === "cronjobs" && (
-          <ResourceTable
-            loading={loading}
-            rows={filteredCronJobs}
-            rowKey={(r) => r.name}
-            columns={cronColumns}
-            onRowClick={(r) => setSelectedName(r.name)}
-          />
-        )}
+        {mode === "deployments" && <ResourceTable loading={loading} rows={filteredDeployments} rowKey={(r) => r.name} columns={deploymentColumns} />}
+        {mode === "pods" && <ResourceTable loading={loading} rows={filteredPods} rowKey={(r) => r.name} columns={podColumns} />}
+        {mode === "statefulsets" && <ResourceTable loading={loading} rows={filteredStatefulSets} rowKey={(r) => r.name} columns={statefulColumns} />}
+        {mode === "daemonsets" && <ResourceTable loading={loading} rows={filteredDaemonSets} rowKey={(r) => r.name} columns={daemonColumns} />}
+        {mode === "jobs" && <ResourceTable loading={loading} rows={filteredJobs} rowKey={(r) => r.name} columns={jobColumns} />}
+        {mode === "cronjobs" && <ResourceTable loading={loading} rows={filteredCronJobs} rowKey={(r) => r.name} columns={cronColumns} />}
       </PageScaffold>
 
-      <DetailDrawer
-        open={drawerOpen}
-        title={selectedName ? `${currentLabel} 详情 - ${selectedName}` : `${currentLabel} 详情`}
-        onClose={() => setSelectedName("")}
-        actions={
-          selectedName ? (
-            <Stack direction="row" spacing={1}>
-              <Button size="small" onClick={openYaml} disabled={yamlLoading}>
-                {yamlLoading ? "YAML 加载中..." : "查看/编辑 YAML"}
-              </Button>
-              {mode === "pods" && (
-                <Button size="small" onClick={() => void openLogs()} disabled={logsLoading}>
-                  查看日志
-                </Button>
-              )}
-            </Stack>
-          ) : null
-        }
+      <Menu
+        anchorEl={actionAnchorEl}
+        open={Boolean(actionAnchorEl)}
+        onClose={closeActionMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
+        <MenuItem disabled={!actionTarget?.isPod} onClick={() => void runMenuAction("shell")}><ListItemText primary="Execute Shell" /></MenuItem>
+        <MenuItem disabled={!actionTarget?.isPod} onClick={() => void runMenuAction("logs")}><ListItemText primary="View Logs" /></MenuItem>
+        <Divider />
+        <MenuItem onClick={() => void runMenuAction("show")}><ListItemText primary="Show Configuration" /></MenuItem>
+        <MenuItem onClick={() => void runMenuAction("yaml")}><ListItemText primary="Edit YAML" /></MenuItem>
+        <MenuItem onClick={() => void runMenuAction("clone")}><ListItemText primary="Clone" secondary="待后端能力" /></MenuItem>
+        <MenuItem onClick={() => void runMenuAction("download")}><ListItemText primary="DownLoad YAML" /></MenuItem>
+        <MenuItem onClick={() => void runMenuAction("delete")}><ListItemText primary="Delete" secondary="待后端能力" /></MenuItem>
+      </Menu>
+
+      <DetailDrawer open={drawerOpen} title={detailName ? `${currentLabel} 详情 - ${detailName}` : `${currentLabel} 详情`} onClose={() => setDetailName("")}>
         {mode === "deployments" && selectedDeployment && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedDeployment.name}</Typography>
@@ -581,7 +552,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Typography variant="body2">副本：{selectedDeployment.ready}/{selectedDeployment.replicas}</Typography>
           </Stack>
         )}
-
         {mode === "pods" && selectedPod && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedPod.name}</Typography>
@@ -591,7 +561,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Typography variant="body2">IP：{selectedPod.ip}</Typography>
           </Stack>
         )}
-
         {mode === "statefulsets" && selectedStatefulSet && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedStatefulSet.name}</Typography>
@@ -601,7 +570,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Typography variant="body2">副本：{selectedStatefulSet.ready}/{selectedStatefulSet.replicas}</Typography>
           </Stack>
         )}
-
         {mode === "daemonsets" && selectedDaemonSet && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedDaemonSet.name}</Typography>
@@ -610,7 +578,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Typography variant="body2">调度：{selectedDaemonSet.current}/{selectedDaemonSet.desired}</Typography>
           </Stack>
         )}
-
         {mode === "jobs" && selectedJob && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedJob.name}</Typography>
@@ -619,7 +586,6 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
             <Typography variant="body2">完成/失败：{selectedJob.completions}/{selectedJob.failed}</Typography>
           </Stack>
         )}
-
         {mode === "cronjobs" && selectedCronJob && (
           <Stack spacing={1}>
             <Typography variant="body2">名称：{selectedCronJob.name}</Typography>
@@ -633,10 +599,10 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
 
       <YamlDialog
         open={yamlOpen}
-        title={`${currentLabel} YAML 编辑`}
+        title={`${currentLabel} YAML ${yamlReadOnly ? "查看" : "编辑"}`}
         yaml={yamlText}
         onClose={() => setYamlOpen(false)}
-        onSave={!canWorkloadWrite() ? undefined : saveYaml}
+        onSave={yamlReadOnly || !canWorkloadWrite() ? undefined : saveYaml}
         saving={yamlLoading}
         saveMeta={{
           lastSavedAt: selectedSaveMeta?.lastSavedAt,
@@ -651,69 +617,30 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
           <Stack spacing={2} sx={{ mt: 1 }}>
             {logsError && <Alert severity="error">{logsError}</Alert>}
             {logsNotice && <Alert severity="success">{logsNotice}</Alert>}
-            {terminalNotice && <Alert severity="info">终端预留状态：{terminalNotice}</Alert>}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
               {logContainers.length > 0 && (
-                <TextField
-                  select
-                  size="small"
-                  label="容器"
-                  value={logContainer}
-                  onChange={(e) => setLogContainer(e.target.value)}
-                  sx={{ minWidth: 180 }}
-                >
+                <TextField select size="small" label="容器" value={logContainer} onChange={(e) => setLogContainer(e.target.value)} sx={{ minWidth: 180 }}>
                   {logContainers.map((name) => (
-                    <MenuItem key={name} value={name}>
-                      {name}
-                    </MenuItem>
+                    <MenuItem key={name} value={name}>{name}</MenuItem>
                   ))}
                 </TextField>
               )}
-              <TextField
-                size="small"
-                label="日志关键字"
-                value={logKeyword}
-                onChange={(e) => setLogKeyword(e.target.value)}
-                sx={{ minWidth: 240 }}
-              />
-              <FormControlLabel
-                control={<Checkbox checked={logCaseSensitive} onChange={(e) => setLogCaseSensitive(e.target.checked)} />}
-                label="大小写敏感"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={logMatchOnly} onChange={(e) => setLogMatchOnly(e.target.checked)} />}
-                label="仅显示匹配行"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)} />}
-                label="跟随刷新"
-              />
+              <TextField size="small" label="日志关键字" value={logKeyword} onChange={(e) => setLogKeyword(e.target.value)} sx={{ minWidth: 240 }} />
+              <FormControlLabel control={<Checkbox checked={logCaseSensitive} onChange={(e) => setLogCaseSensitive(e.target.checked)} />} label="大小写敏感" />
+              <FormControlLabel control={<Checkbox checked={logMatchOnly} onChange={(e) => setLogMatchOnly(e.target.checked)} />} label="仅显示匹配行" />
+              <FormControlLabel control={<Checkbox checked={logFollow} onChange={(e) => setLogFollow(e.target.checked)} />} label="跟随刷新" />
             </Stack>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ md: "center" }}>
-              <Typography variant="body2" color="text.secondary">
-                当前显示 {visibleLogLines.length} 行
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                匹配 {matchedLogCount} 行
-              </Typography>
+              <Typography variant="body2" color="text.secondary">当前显示 {visibleLogLines.length} 行</Typography>
+              <Typography variant="body2" color="text.secondary">匹配 {matchedLogCount} 行</Typography>
               <Button size="small" onClick={clearLogFilters}>清空筛选</Button>
-              <Button size="small" onClick={() => void refreshLogs()} disabled={logsLoading}>
-                {logsLoading ? "刷新中..." : "立即刷新"}
-              </Button>
+              <Button size="small" onClick={() => void refreshLogs()} disabled={logsLoading}>{logsLoading ? "刷新中..." : "立即刷新"}</Button>
               <Button size="small" onClick={() => void copyLogs()} disabled={!rawLogsText}>复制日志</Button>
             </Stack>
-            <TextField
-              multiline
-              minRows={16}
-              fullWidth
-              value={rawLogsText}
-              InputProps={{ readOnly: true }}
-              placeholder={logsLoading ? "日志加载中..." : "暂无日志"}
-            />
+            <TextField multiline minRows={16} fullWidth value={rawLogsText} InputProps={{ readOnly: true }} placeholder={logsLoading ? "日志加载中..." : "暂无日志"} />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => void openTerminal()}>打开终端</Button>
           <Button onClick={downloadLogs} disabled={!rawLogsText}>导出日志</Button>
           <Button onClick={() => setLogsOpen(false)}>关闭</Button>
         </DialogActions>

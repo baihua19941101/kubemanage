@@ -28,7 +28,7 @@ export default function TerminalDialog(props: Props) {
     try {
       ws.close();
     } catch {
-      // ignore close error
+      // ignore close errors
     }
   }, []);
 
@@ -97,7 +97,9 @@ export default function TerminalDialog(props: Props) {
     };
   }, [closeSocket, props.createSession, props.open]);
 
-  connectRef.current = connectSocket;
+  connectRef.current = () => {
+    void connectSocket();
+  };
 
   useEffect(() => {
     if (!props.open || !mountEl) return;
@@ -117,9 +119,7 @@ export default function TerminalDialog(props: Props) {
     term.focus();
     term.writeln("[terminal] connecting...");
 
-    const onResize = () => {
-      fitAddon.fit();
-    };
+    const onResize = () => fitAddon.fit();
     window.addEventListener("resize", onResize);
 
     const dataDispose = term.onData((data) => {
@@ -147,7 +147,7 @@ export default function TerminalDialog(props: Props) {
     if (term) {
       term.writeln("\r\n[terminal] reconnecting...");
     }
-    void connectRef.current?.();
+    connectRef.current?.();
   }
 
   function handleClose() {
