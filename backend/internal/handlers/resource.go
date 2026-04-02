@@ -19,6 +19,11 @@ type updateResourceYAMLRequest struct {
 	YAML string `json:"yaml"`
 }
 
+type createResourceYAMLRequest struct {
+	Namespace string `json:"namespace"`
+	YAML      string `json:"yaml"`
+}
+
 func NewResourceHandler(resourceSvc *service.ResourceService, liveResourceSvc *service.LiveResourceReader, adapterMode string) *ResourceHandler {
 	return &ResourceHandler{
 		resourceSvc:     resourceSvc,
@@ -725,6 +730,27 @@ func (h *ResourceHandler) UpdateLimitRangeYAML(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *ResourceHandler) CreateLimitRange(c *gin.Context) {
+	var req createResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.CreateLimitRangeYAML(c.Request.Context(), req.Namespace, req.YAML); err != nil {
+			handleResourceCreateError(c, err, "limitrange")
+			return
+		}
+		c.Status(http.StatusCreated)
+		return
+	}
+	if err := h.resourceSvc.CreateLimitRange(req.Namespace, req.YAML); err != nil {
+		handleResourceCreateError(c, err, "limitrange")
+		return
+	}
+	c.Status(http.StatusCreated)
+}
+
 func (h *ResourceHandler) UpdateResourceQuotaYAML(c *gin.Context) {
 	name := c.Param("name")
 	var req updateResourceYAMLRequest
@@ -747,6 +773,27 @@ func (h *ResourceHandler) UpdateResourceQuotaYAML(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *ResourceHandler) CreateResourceQuota(c *gin.Context) {
+	var req createResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.CreateResourceQuotaYAML(c.Request.Context(), req.Namespace, req.YAML); err != nil {
+			handleResourceCreateError(c, err, "resourcequota")
+			return
+		}
+		c.Status(http.StatusCreated)
+		return
+	}
+	if err := h.resourceSvc.CreateResourceQuota(req.Namespace, req.YAML); err != nil {
+		handleResourceCreateError(c, err, "resourcequota")
+		return
+	}
+	c.Status(http.StatusCreated)
+}
+
 func (h *ResourceHandler) UpdateNetworkPolicyYAML(c *gin.Context) {
 	name := c.Param("name")
 	var req updateResourceYAMLRequest
@@ -767,6 +814,27 @@ func (h *ResourceHandler) UpdateNetworkPolicyYAML(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *ResourceHandler) CreateNetworkPolicy(c *gin.Context) {
+	var req createResourceYAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.CreateNetworkPolicyYAML(c.Request.Context(), req.Namespace, req.YAML); err != nil {
+			handleResourceCreateError(c, err, "networkpolicy")
+			return
+		}
+		c.Status(http.StatusCreated)
+		return
+	}
+	if err := h.resourceSvc.CreateNetworkPolicy(req.Namespace, req.YAML); err != nil {
+		handleResourceCreateError(c, err, "networkpolicy")
+		return
+	}
+	c.Status(http.StatusCreated)
 }
 
 func (h *ResourceHandler) DeleteLimitRange(c *gin.Context) {
@@ -846,6 +914,24 @@ func handleResourceDeleteError(c *gin.Context, err error) {
 	case strings.Contains(msg, "failed:"):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
 	default:
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	}
+}
+
+func handleResourceCreateError(c *gin.Context, err error, kind string) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "yaml content is empty"), strings.Contains(msg, "invalid yaml"), strings.Contains(msg, "namespace is required"), strings.Contains(msg, "metadata.name is required"):
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+	case strings.Contains(msg, "already exists"):
+		c.JSON(http.StatusConflict, gin.H{"error": msg})
+	case strings.Contains(msg, "failed:"):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	default:
+		if strings.Contains(msg, kind+" already exists") {
+			c.JSON(http.StatusConflict, gin.H{"error": msg})
+			return
+		}
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
 	}
 }

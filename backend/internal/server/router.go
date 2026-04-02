@@ -202,6 +202,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 			}
 			return resourceSvc.NetworkPolicyNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_networkpolicy_yaml"), resourceHandler.UpdateNetworkPolicyYAML)
+		write.POST("/limitranges", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, middleware.ResolvePathParamFromBodyOrJSON("namespace")), middleware.RequireActionConfirm("create_limitrange"), resourceHandler.CreateLimitRange)
+		write.POST("/resourcequotas", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, middleware.ResolvePathParamFromBodyOrJSON("namespace")), middleware.RequireActionConfirm("create_resourcequota"), resourceHandler.CreateResourceQuota)
+		write.POST("/networkpolicies", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, middleware.ResolvePathParamFromBodyOrJSON("namespace")), middleware.RequireActionConfirm("create_networkpolicy"), resourceHandler.CreateNetworkPolicy)
 		write.DELETE("/limitranges/:name", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
 			if adapterMode != "mock" && liveResourceSvc != nil {
 				return liveResourceSvc.LimitRangeNamespace(c.Request.Context(), c.Param("name"))
