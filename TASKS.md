@@ -251,6 +251,8 @@
 | T208 | P1501-B：后端配置加载重构 | 已完成 | 已实现 `config.yaml` 加载，支持 `KM_CONFIG_FILE` 指定路径与环境变量覆盖 |
 | T209 | P1501-C：日志初始化配置化 | 已完成 | 已新增日志初始化模块，支持 `level/format/output` 配置 |
 | T210 | P1501-D：联调与验收 | 已完成 | 已通过后端测试与临时端口启动验证，README/TASKS 已完成收口同步 |
+| T211 | P1501 配置文件注释补充 | 已完成 | 已为 `k8s.adapter_mode` 与 `security.secret_key` 增加中文注释说明 |
+| T212 | P1501 日志配置注释补充 | 已完成 | 已为 `log.level/format/output` 增加可选值与回退行为说明 |
 
 ## 完成记录
 
@@ -531,3 +533,5 @@
 - 2026-04-02：完成 T208（后端配置加载支持 config.yaml 与环境变量覆盖）
 - 2026-04-02：完成 T209（新增日志初始化模块，支持 level/format/output 配置）
 - 2026-04-02：完成 T210（完成 go test 与临时端口启动验证，文档状态收口）
+- 2026-04-02：完成 T211（补充 config.yaml 注释，明确 adapter_mode 与 secret_key 配置语义）
+- 2026-04-02：完成 T212（补充日志配置注释，明确 level/format/output 可选值与输出行为）
