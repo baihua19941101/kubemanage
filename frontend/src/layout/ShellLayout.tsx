@@ -53,7 +53,8 @@ const navSections: NavSection[] = [
     icon: <ClusterIcon fontSize="small" />,
     children: [
       { label: "集群管理", path: "/cluster" },
-      { label: "名称空间", path: "/namespaces" }
+      { label: "名称空间", path: "/namespaces" },
+      { label: "节点管理", path: "/nodes" }
     ]
   },
   {

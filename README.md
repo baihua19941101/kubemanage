@@ -385,6 +385,18 @@ P801 认证源管理冒烟脚本：
 bash scripts/p801_auth_provider_smoke_test.sh
 ```
 
+P901 LDAP Bind 冒烟脚本：
+
+```bash
+bash scripts/p901_ldap_bind_smoke_test.sh
+```
+
+P1001 节点管理冒烟脚本：
+
+```bash
+bash scripts/p1001_node_management_smoke_test.sh
+```
+
 ## 开发原则
 
 - Go 实现高并发处理，统一连接池管理
@@ -939,6 +951,28 @@ bash scripts/p801_auth_provider_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p901_ldap_bind_smoke_test.sh` 通过
 - 冒烟修正：已修复脚本默认 `LDAP_USER_FILTER` 占位符截断问题，切换本地测试端口映射为容器 `10389`，并将默认测试账号调整为 `fry/fry`
 
+### P1001 计划（2026-04-02）
+
+#### 范围定义
+- 目标：落地“节点管理”第一版可用闭环，支持节点列表、详情与 YAML 查看
+- 本轮不纳入：节点标签/污点编辑、节点删除、节点级终端、节点事件聚合
+
+#### 能力范围
+- 后端新增节点读接口：列表、详情、YAML 查看/下载
+- 前端新增节点管理页面：筛选、表格、详情抽屉、YAML 查看下载
+- 延续 real-only 约束：节点数据统一来自真实集群，不提供 mock 回退
+
+#### 开发拆分
+1. `P1001-A`：后端节点读链路与 handler/router 接入
+2. `P1001-B`：前端节点管理页面与路由菜单接入
+3. `P1001-C`：联调与验收（go test、frontend build、节点冒烟脚本）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：`feature/p1001-node-management-mvp` 分支创建、数据库备份 `backups/kubemanage-20260402-085330-p1001.sql`
+- 已完成开发：后端节点列表/详情/YAML 接口、前端节点管理页面与导航接入、节点冒烟脚本
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p1001_node_management_smoke_test.sh` 通过
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -949,7 +983,7 @@ bash scripts/p801_auth_provider_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第九阶段（P901 已完成）`
-- 当前任务：`P901：真实 LDAP Bind 最小闭环（已完成）`
-- 当前状态：`LDAP provider 登录闭环已打通，代码与冒烟验证通过`
-- 下一任务：`规划并接入 OAuth 回调链路（下一阶段）`
+- 当前阶段：`第十阶段（P1001 已完成）`
+- 当前任务：`P1001：节点管理第一版能力（已完成）`
+- 当前状态：`节点列表/详情/YAML 闭环已交付并通过冒烟验收`
+- 下一任务：`与你确认下一优先级功能（Policy 管理 / 日志调试增强 / 权限体系深化）`

@@ -346,3 +346,91 @@ func (h *ResourceHandler) GetStorageClass(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, item)
 }
+
+func (h *ResourceHandler) ListNodes(c *gin.Context) {
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		items, err := h.liveResourceSvc.ListNodes(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": h.resourceSvc.ListNodes()})
+}
+
+func (h *ResourceHandler) GetNode(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		item, err := h.liveResourceSvc.GetNode(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, item)
+		return
+	}
+	item, ok := h.resourceSvc.GetNode(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *ResourceHandler) GetNodeYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetNodeYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetNodeYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.String(http.StatusOK, raw)
+}
+
+func (h *ResourceHandler) DownloadNodeYAML(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		raw, err := h.liveResourceSvc.GetNodeYAML(c.Request.Context(), name)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found:") {
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+			return
+		}
+		c.Header("Content-Type", "application/yaml; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=\"node-"+name+".yaml\"")
+		c.String(http.StatusOK, raw)
+		return
+	}
+	raw, ok := h.resourceSvc.GetNodeYAML(name)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "node not found"})
+		return
+	}
+	c.Header("Content-Type", "application/yaml; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=\"node-"+name+".yaml\"")
+	c.String(http.StatusOK, raw)
+}

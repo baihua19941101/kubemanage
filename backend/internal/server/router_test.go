@@ -391,6 +391,37 @@ func TestResourceEndpoints(t *testing.T) {
 	if w11.Code != http.StatusOK {
 		t.Fatalf("list storageclasses failed: %d body=%s", w11.Code, w11.Body.String())
 	}
+
+	req12, _ := http.NewRequest(http.MethodGet, "/api/v1/nodes", nil)
+	w12 := httptest.NewRecorder()
+	r.ServeHTTP(w12, req12)
+	if w12.Code != http.StatusOK {
+		t.Fatalf("list nodes failed: %d body=%s", w12.Code, w12.Body.String())
+	}
+
+	req13, _ := http.NewRequest(http.MethodGet, "/api/v1/nodes/ip-10-10-1-21.ec2.internal", nil)
+	w13 := httptest.NewRecorder()
+	r.ServeHTTP(w13, req13)
+	if w13.Code != http.StatusOK {
+		t.Fatalf("get node failed: %d body=%s", w13.Code, w13.Body.String())
+	}
+
+	req14, _ := http.NewRequest(http.MethodGet, "/api/v1/nodes/ip-10-10-1-21.ec2.internal/yaml", nil)
+	w14 := httptest.NewRecorder()
+	r.ServeHTTP(w14, req14)
+	if w14.Code != http.StatusOK {
+		t.Fatalf("get node yaml failed: %d body=%s", w14.Code, w14.Body.String())
+	}
+
+	req15, _ := http.NewRequest(http.MethodGet, "/api/v1/nodes/ip-10-10-1-21.ec2.internal/yaml/download", nil)
+	w15 := httptest.NewRecorder()
+	r.ServeHTTP(w15, req15)
+	if w15.Code != http.StatusOK {
+		t.Fatalf("download node yaml failed: %d body=%s", w15.Code, w15.Body.String())
+	}
+	if cd := w15.Header().Get("Content-Disposition"); cd == "" {
+		t.Fatalf("download node yaml missing content-disposition header")
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {

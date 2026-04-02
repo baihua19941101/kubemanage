@@ -87,6 +87,21 @@ type StorageClassItem struct {
 	Age                  string `json:"age"`
 }
 
+type NodeItem struct {
+	Name        string `json:"name"`
+	Roles       string `json:"roles"`
+	Version     string `json:"version"`
+	InternalIP  string `json:"internalIP"`
+	Status      string `json:"status"`
+	OSImage     string `json:"osImage"`
+	CPU         string `json:"cpu"`
+	Memory      string `json:"memory"`
+	PodCount    int    `json:"podCount"`
+	LabelsCount int    `json:"labelsCount"`
+	TaintsCount int    `json:"taintsCount"`
+	Age         string `json:"age"`
+}
+
 type ResourceService struct {
 	services   []ServiceItem
 	configMaps []ConfigMapItem
@@ -96,6 +111,8 @@ type ResourceService struct {
 	pvs        []PVItem
 	pvcs       []PVCItem
 	scs        []StorageClassItem
+	nodes      []NodeItem
+	nodeYAML   map[string]string
 }
 
 func NewResourceService() *ResourceService {
@@ -237,6 +254,40 @@ func NewResourceService() *ResourceService {
 				Age:                  "30d",
 			},
 		},
+		nodes: []NodeItem{
+			{
+				Name:        "ip-10-10-1-21.ec2.internal",
+				Roles:       "control-plane,master",
+				Version:     "v1.30.2",
+				InternalIP:  "10.10.1.21",
+				Status:      "Ready",
+				OSImage:     "Ubuntu 22.04.4 LTS",
+				CPU:         "4",
+				Memory:      "15728640Ki",
+				PodCount:    42,
+				LabelsCount: 18,
+				TaintsCount: 1,
+				Age:         "21d",
+			},
+			{
+				Name:        "ip-10-10-1-35.ec2.internal",
+				Roles:       "worker",
+				Version:     "v1.30.2",
+				InternalIP:  "10.10.1.35",
+				Status:      "Ready",
+				OSImage:     "Ubuntu 22.04.4 LTS",
+				CPU:         "8",
+				Memory:      "31457280Ki",
+				PodCount:    89,
+				LabelsCount: 14,
+				TaintsCount: 0,
+				Age:         "20d",
+			},
+		},
+		nodeYAML: map[string]string{
+			"ip-10-10-1-21.ec2.internal": "apiVersion: v1\nkind: Node\nmetadata:\n  name: ip-10-10-1-21.ec2.internal\n  labels:\n    node-role.kubernetes.io/control-plane: \"\"\nstatus:\n  nodeInfo:\n    kubeletVersion: v1.30.2\n",
+			"ip-10-10-1-35.ec2.internal": "apiVersion: v1\nkind: Node\nmetadata:\n  name: ip-10-10-1-35.ec2.internal\n  labels:\n    node-role.kubernetes.io/worker: \"\"\nstatus:\n  nodeInfo:\n    kubeletVersion: v1.30.2\n",
+		},
 	}
 }
 
@@ -375,6 +426,24 @@ func (s *ResourceService) GetStorageClass(name string) (StorageClassItem, bool) 
 		}
 	}
 	return StorageClassItem{}, false
+}
+
+func (s *ResourceService) ListNodes() []NodeItem {
+	return append([]NodeItem(nil), s.nodes...)
+}
+
+func (s *ResourceService) GetNode(name string) (NodeItem, bool) {
+	for _, item := range s.nodes {
+		if item.Name == name {
+			return item, true
+		}
+	}
+	return NodeItem{}, false
+}
+
+func (s *ResourceService) GetNodeYAML(name string) (string, bool) {
+	yaml, ok := s.nodeYAML[name]
+	return yaml, ok
 }
 
 func maskSecret(value string) string {
