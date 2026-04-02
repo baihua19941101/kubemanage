@@ -120,6 +120,24 @@ func TestSwitchCluster(t *testing.T) {
 	}
 }
 
+func TestSwitchClusterLiveMode(t *testing.T) {
+	r := NewRouter(nil, "live", "")
+
+	importReq := requestWithRole(http.MethodPost, "/api/v1/clusters/connections/import/token", `{"name":"live-a","apiServer":"https://k8s.example.local","bearerToken":"token-123","caCert":"ca","skipTlsVerify":true}`, "admin")
+	importW := httptest.NewRecorder()
+	r.ServeHTTP(importW, importReq)
+	if importW.Code != http.StatusCreated {
+		t.Fatalf("import token cluster connection failed: %d body=%s", importW.Code, importW.Body.String())
+	}
+
+	switchReq := requestWithRole(http.MethodPost, "/api/v1/clusters/switch", `{"name":"live-a"}`, "admin")
+	switchW := httptest.NewRecorder()
+	r.ServeHTTP(switchW, switchReq)
+	if switchW.Code != http.StatusOK {
+		t.Fatalf("switch cluster in live mode failed: %d body=%s", switchW.Code, switchW.Body.String())
+	}
+}
+
 func TestSwitchClusterRequiresConfirmation(t *testing.T) {
 	r := NewRouter(nil, "mock", "")
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/clusters/switch", bytes.NewBufferString(`{"name":"staging-cluster"}`))

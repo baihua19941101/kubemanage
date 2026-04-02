@@ -213,6 +213,23 @@ func (s *ClusterConnectionService) Activate(ctx context.Context, id uint) error 
 	return s.repo.SetActive(ctx, id)
 }
 
+func (s *ClusterConnectionService) ActivateByName(ctx context.Context, name string) error {
+	target := strings.TrimSpace(name)
+	if target == "" {
+		return errors.New("cluster name is required")
+	}
+	items, err := s.repo.List(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Name), target) {
+			return s.Activate(ctx, item.ID)
+		}
+	}
+	return fmt.Errorf("cluster connection not found: %s", target)
+}
+
 func (s *ClusterConnectionService) GetLiveCluster(ctx context.Context) (LiveClusterSummary, error) {
 	record, err := s.repo.GetActive(ctx)
 	if err != nil {
