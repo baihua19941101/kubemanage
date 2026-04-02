@@ -253,6 +253,7 @@
 | T210 | P1501-D：联调与验收 | 已完成 | 已通过后端测试与临时端口启动验证，README/TASKS 已完成收口同步 |
 | T211 | P1501 配置文件注释补充 | 已完成 | 已为 `k8s.adapter_mode` 与 `security.secret_key` 增加中文注释说明 |
 | T212 | P1501 日志配置注释补充 | 已完成 | 已为 `log.level/format/output` 增加可选值与回退行为说明 |
+| T213 | LDAP 无效数据清理 | 已完成 | 已清理非默认 LDAP 认证源测试数据，保留 local 与当前默认 LDAP |
 
 ## 完成记录
 
@@ -535,3 +536,4 @@
 - 2026-04-02：完成 T210（完成 go test 与临时端口启动验证，文档状态收口）
 - 2026-04-02：完成 T211（补充 config.yaml 注释，明确 adapter_mode 与 secret_key 配置语义）
 - 2026-04-02：完成 T212（补充日志配置注释，明确 level/format/output 可选值与输出行为）
+- 2026-04-02：完成 T213（清理 LDAP 无效测试数据，保留 local 与当前默认 LDAP 认证源）
