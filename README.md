@@ -138,10 +138,11 @@ curl http://localhost:8080/api/v1/namespaces
 
 创建名称空间：
 
-> 说明：以下名称空间写入与 YAML 读写接口当前仅用于 `KM_K8S_ADAPTER_MODE=mock` 调试；`live` 模式返回 `501`。
-
 ```bash
 curl -X POST http://localhost:8080/api/v1/namespaces \
+  -H "X-User: admin" \
+  -H "X-User-Role: admin" \
+  -H "X-Action-Confirm: CONFIRM" \
   -H "Content-Type: application/json" \
   -d '{"name":"qa"}'
 ```
@@ -161,7 +162,10 @@ curl -OJ http://localhost:8080/api/v1/namespaces/qa/yaml/download
 删除名称空间：
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/namespaces/qa
+curl -X DELETE http://localhost:8080/api/v1/namespaces/qa \
+  -H "X-User: admin" \
+  -H "X-User-Role: admin" \
+  -H "X-Action-Confirm: CONFIRM"
 ```
 
 Deployment 列表：
@@ -172,8 +176,6 @@ curl http://localhost:8080/api/v1/deployments
 
 查看 Deployment YAML：
 
-> 说明：Deployment YAML 读写当前仅用于 `KM_K8S_ADAPTER_MODE=mock` 调试；`live` 模式返回 `501`。
-
 ```bash
 curl http://localhost:8080/api/v1/deployments/web-api/yaml
 ```
@@ -182,6 +184,9 @@ curl http://localhost:8080/api/v1/deployments/web-api/yaml
 
 ```bash
 curl -X PUT http://localhost:8080/api/v1/deployments/web-api/yaml \
+  -H "X-User: admin" \
+  -H "X-User-Role: admin" \
+  -H "X-Action-Confirm: CONFIRM" \
   -H "Content-Type: application/json" \
   -d '{"yaml":"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-api\n"}'
 ```
@@ -1133,6 +1138,126 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build` 通过
 - 当前任务：`P1301 已收口`
 
+### P1302 计划（2026-04-02）
+
+#### 范围定义
+- 目标：完成第二轮 real-only 对齐，补齐 Namespace 与 Deployment 的关键写链路
+- 本轮聚焦：`Namespace` 写入/YAML、`Deployment` YAML 读写、路由作用域解析对齐
+- 本轮不纳入：其余工作负载资源（StatefulSet/DaemonSet/Job/CronJob）YAML 写链路 real-only 改造
+
+#### 开发拆分
+1. `P1302-A`：开发前数据库备份与文档状态更新
+2. `P1302-B`：`Namespace` live 写入与 YAML 读链路
+3. `P1302-C`：`Deployment` live YAML 读写与作用域校验链路
+4. `P1302-D`：回归与验收（go test、frontend build、TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-130753-p1302.sql`
+- 已完成开发：Namespace 在 live 模式支持创建/删除/YAML 查看下载
+- 已完成开发：Deployment 在 live 模式支持 YAML 查看/保存（含名称与命名空间一致性校验）
+- 已完成开发：Deployment 写入作用域解析改为 live 优先命名空间解析
+- 已完成验证：`go test ./...`、`npm run build` 通过
+- 当前任务：`P1302 已收口`
+
+### P1303 计划（2026-04-02）
+
+#### 范围定义
+- 目标：统一优化“查看/编辑 YAML”交互样式，提升可读性与操作体验
+- 本轮聚焦：共享 `YamlDialog` 改造为可折叠样式，全页面统一生效
+- 本轮不纳入：Monaco 编辑器替换、YAML 语法校验与格式化
+
+#### 开发拆分
+1. `P1303-A`：共享 YAML 弹窗样式重构（可折叠）
+2. `P1303-B`：统一接入验证（Namespace/Workload/Node/Policy 页面）
+3. `P1303-C`：回归与验收（frontend build、TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成开发：`YamlDialog` 增加折叠面板与展开/收起控制，编辑区统一等宽字体
+- 已完成验证：`npm run build` 通过
+- 当前任务：`P1303 已收口`
+
+### P1304 计划（2026-04-02）
+
+#### 范围定义
+- 目标：将 YAML 交互升级为 Rancher 风格的“字段级可折叠”体验
+- 本轮聚焦：YAML 结构视图（key 级折叠/展开）+ 源码视图双模式
+- 本轮不纳入：Monaco 编辑器、实时 schema 校验、自动格式化
+
+#### 开发拆分
+1. `P1304-A`：开发前数据库备份与依赖准备
+2. `P1304-B`：共享 `YamlDialog` 改造为字段树折叠视图
+3. `P1304-C`：回归与验收（frontend build、README/TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-132840-p1304.sql`
+- 已完成开发：`YamlDialog` 新增“结构视图/源码视图”，支持 key 级折叠、全部展开/折叠
+- 已完成开发：新增 `yaml` 依赖用于结构化解析渲染
+- 已完成验证：`npm run build` 通过
+- 当前任务：`P1304 已收口`
+
+### P1305 计划（2026-04-02）
+
+#### 范围定义
+- 目标：将 YAML 编辑体验进一步对齐 Rancher 风格
+- 本轮聚焦：代码编辑器主视图 + key 折叠（gutter fold）+ 行号 + 结构视图辅助
+- 本轮不纳入：多人协作编辑、服务端 YAML schema 校验
+
+#### 开发拆分
+1. `P1305-A`：编辑器依赖接入（Ace）
+2. `P1305-B`：`YamlDialog` 升级为 Rancher 风格编辑器主视图
+3. `P1305-C`：回归与验收（frontend build、README/TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成开发：新增 Ace YAML 编辑器主视图（行号、缩进折叠、fold widget）
+- 已完成开发：保留结构视图作为辅助浏览模式（key 级折叠）
+- 已完成验证：`npm run build` 通过
+- 当前任务：`P1305 已收口`
+
+### P1306 计划（2026-04-02）
+
+#### 范围定义
+- 目标：继续对齐 Rancher YAML 编辑交互，补齐操作栏能力
+- 本轮聚焦：导入文件、下载、还原、变更预览、编辑器主视图保持 key 折叠
+- 本轮不纳入：服务端差异对比、三方 merge 编辑
+
+#### 开发拆分
+1. `P1306-A`：开发前数据库备份
+2. `P1306-B`：`YamlDialog` 操作栏增强（导入/下载/还原/变更）
+3. `P1306-C`：回归与验收（frontend build、README/TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-133851-p1306.sql`
+- 已完成开发：YAML 编辑器新增导入文件、下载、还原、变更预览工具栏
+- 已完成开发：保留 key 级折叠编辑器与结构视图辅助模式
+- 已完成验证：`npm run build` 通过
+- 当前任务：`P1306 已收口`
+
+### P1307 计划（2026-04-02）
+
+#### 范围定义
+- 目标：补齐工作负载剩余 5 类资源在 real-only 下的 YAML 读写能力
+- 覆盖资源：`Pod / StatefulSet / DaemonSet / Job / CronJob`
+- 本轮不纳入：批量编辑、回滚对比、版本化草稿
+
+#### 开发拆分
+1. `P1307-A`：开发前数据库备份
+2. `P1307-B`：后端 live reader 补齐 5 类资源 YAML 读写
+3. `P1307-C`：handler 与路由作用域解析对齐（live 优先）
+4. `P1307-D`：回归与验收（go test、frontend build、README/TASKS 同步）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-143130-p1307.sql`
+- 已完成开发：`Pod/StatefulSet/DaemonSet/Job/CronJob` 在 live 模式支持 YAML 查看与保存
+- 已完成开发：5 类写入路由作用域解析统一改为 live 优先命名空间解析
+- 已完成验证：`go test ./...`、`npm run build` 通过
+- 当前任务：`P1307 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1143,7 +1268,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十三阶段（P1301 已完成）`
-- 当前任务：`P1301：文档与 real-only 口径偏差对齐（已完成）`
-- 当前状态：`README 基础验证口径已纠偏，/clusters/switch 在 real-only 可用`
-- 下一任务：`待你确认是否继续推进 namespace/deployment 写路径 real-only 改造`
+- 当前阶段：`第十九阶段（P1307 已完成）`
+- 当前任务：`P1307：5 类工作负载 YAML real-only 对齐（已完成）`
+- 当前状态：`Deployment + Pod + StatefulSet + DaemonSet + Job + CronJob 均支持 real-only YAML 读写`
+- 下一任务：`待你确认是否继续推进编辑器性能优化（按需加载/分包）`

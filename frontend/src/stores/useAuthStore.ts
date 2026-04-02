@@ -20,6 +20,7 @@ type AuthState = {
   user: string;
   accessToken: string;
   refreshToken: string;
+  namespaces: string[];
   authenticated: boolean;
   bootstrap: () => Promise<void>;
   login: (username: string, password: string, provider?: string) => Promise<LoginResult>;
@@ -30,6 +31,7 @@ type AuthState = {
   canWorkloadWrite: () => boolean;
   canAuditRead: () => boolean;
   canUserManage: () => boolean;
+  canWriteNamespace: (namespace: string) => boolean;
   allowedNamespaces: () => string[];
 };
 
@@ -58,11 +60,29 @@ function normalizeRole(role: string) {
   return "readonly";
 }
 
+function normalizeAllowedNamespaces(role: string, namespaces?: string[]) {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === "admin") {
+    return ["*"];
+  }
+  const values = (namespaces || [])
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (values.length > 0) {
+    return Array.from(new Set(values));
+  }
+  if (normalizedRole === "standard-user") {
+    return ["dev"];
+  }
+  return [];
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   role: normalizeRole(getCurrentRole()),
   user: getCurrentUser(),
   accessToken: getAccessToken(),
   refreshToken: getRefreshToken(),
+  namespaces: normalizeRole(getCurrentRole()) === "admin" ? ["*"] : normalizeRole(getCurrentRole()) === "standard-user" ? ["dev"] : [],
   authenticated: Boolean(getAccessToken()),
   bootstrap: async () => {
     const accessToken = getAccessToken();
@@ -73,6 +93,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: getCurrentUser(),
         accessToken: "",
         refreshToken,
+        namespaces: normalizeAllowedNamespaces(getCurrentRole()),
         authenticated: false
       });
       return;
@@ -81,9 +102,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (meResp.ok) {
       const me = (await meResp.json()) as MeResponse;
       const role = normalizeRole(me.role);
+      const namespaces = normalizeAllowedNamespaces(role, me.allowedNamespaces);
       setCurrentRole(role);
       setCurrentUser(me.user);
-      set({ role, user: me.user, accessToken, refreshToken, authenticated: true });
+      set({ role, user: me.user, accessToken, refreshToken, namespaces, authenticated: true });
       return;
     }
 
@@ -91,7 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       clearAuthTokens();
       setCurrentRole("readonly");
       setCurrentUser("demo-user");
-      set({ role: "readonly", user: "demo-user", accessToken: "", refreshToken: "", authenticated: false });
+      set({ role: "readonly", user: "demo-user", accessToken: "", refreshToken: "", namespaces: [], authenticated: false });
       return;
     }
 
@@ -110,6 +132,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const refreshed = (await refreshResp.json()) as RefreshResponse;
     setAuthTokens(refreshed.accessToken, refreshed.refreshToken);
     const role = normalizeRole(refreshed.role);
+    const namespaces = normalizeAllowedNamespaces(role, refreshed.allowedNamespaces);
     setCurrentRole(role);
     setCurrentUser(refreshed.user);
     set({
@@ -117,6 +140,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: refreshed.user,
       accessToken: refreshed.accessToken,
       refreshToken: refreshed.refreshToken,
+      namespaces,
       authenticated: true
     });
   },
@@ -132,6 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     const payload = (await resp.json()) as LoginResponse;
     const role = normalizeRole(payload.role);
+    const namespaces = normalizeAllowedNamespaces(role, payload.allowedNamespaces);
     setCurrentRole(role);
     setCurrentUser(payload.user);
     setAuthTokens(payload.accessToken, payload.refreshToken);
@@ -140,6 +165,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: payload.user,
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
+      namespaces,
       authenticated: true
     });
     return { ok: true };
@@ -162,7 +188,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     clearAuthTokens();
     setCurrentRole("readonly");
     setCurrentUser("demo-user");
-    set({ role: "readonly", user: "demo-user", accessToken: "", refreshToken: "", authenticated: false });
+    set({ role: "readonly", user: "demo-user", accessToken: "", refreshToken: "", namespaces: [], authenticated: false });
   },
   setRole: (role: string) => {
     const normalized = normalizeRole(role);
@@ -180,10 +206,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   canAuditRead: () => get().role === "admin",
   canUserManage: () => get().role === "admin",
-  allowedNamespaces: () => {
+  canWriteNamespace: (namespace: string) => {
     const role = get().role;
-    if (role === "admin") return ["*"];
-    if (role === "standard-user") return ["dev"];
-    return [];
+    if (role === "admin") {
+      return true;
+    }
+    if (role !== "standard-user") {
+      return false;
+    }
+    const target = namespace.trim();
+    if (!target) {
+      return false;
+    }
+    const scopes = get().namespaces;
+    if (scopes.includes("*")) {
+      return true;
+    }
+    return scopes.includes(target);
+  },
+  allowedNamespaces: () => {
+    return get().namespaces;
   }
 }));

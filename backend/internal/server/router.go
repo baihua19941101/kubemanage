@@ -158,6 +158,9 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 		write.POST("/namespaces", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParamFromBodyOrJSON("name")), middleware.RequireActionConfirm("create_namespace"), namespaceHandler.CreateNamespace)
 		write.DELETE("/namespaces/:name", middleware.RequireScopedPermission(authSvc, service.PermNamespaceWrite, middleware.ResolvePathParam("name")), middleware.RequireActionConfirm("delete_namespace"), namespaceHandler.DeleteNamespace)
 		write.PUT("/deployments/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.DeploymentNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.DeploymentNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_deployment_yaml"), workloadHandler.UpdateDeploymentYAML)
 		write.PUT("/pods/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
@@ -173,15 +176,27 @@ func NewRouter(store *infra.Store, k8sAdapterMode string, secretKey string) *gin
 			return workloadSvc.PodNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("create_terminal_session"), workloadHandler.CreateTerminalSession)
 		write.PUT("/statefulsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.StatefulSetNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.StatefulSetNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_statefulset_yaml"), workloadHandler.UpdateStatefulSetYAML)
 		write.PUT("/daemonsets/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.DaemonSetNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.DaemonSetNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_daemonset_yaml"), workloadHandler.UpdateDaemonSetYAML)
 		write.PUT("/jobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.JobNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.JobNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_job_yaml"), workloadHandler.UpdateJobYAML)
 		write.PUT("/cronjobs/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
+			if adapterMode != "mock" && liveWorkloadSvc != nil {
+				return liveWorkloadSvc.CronJobNamespace(c.Request.Context(), c.Param("name"))
+			}
 			return workloadSvc.CronJobNamespace(c.Param("name"))
 		}), middleware.RequireActionConfirm("update_cronjob_yaml"), workloadHandler.UpdateCronJobYAML)
 		write.PUT("/limitranges/:name/yaml", middleware.RequireScopedPermission(authSvc, service.PermWorkloadWrite, func(c *gin.Context) (string, error) {
