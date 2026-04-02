@@ -12,10 +12,11 @@ import {
   TextField,
   Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
 import ResourceTable from "../components/framework/ResourceTable";
+import TerminalDialog from "../components/framework/TerminalDialog";
 import YamlDialog from "../components/framework/YamlDialog";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useWorkloadStore } from "../stores/useWorkloadStore";
@@ -118,6 +119,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const saveCronJobYAML = useWorkloadStore((s) => s.saveCronJobYAML);
 
   const canWorkloadWrite = useAuthStore((s) => s.canWorkloadWrite);
+  const currentUser = useAuthStore((s) => s.user);
+  const currentRole = useAuthStore((s) => s.role);
 
   const [mode, setMode] = useState<WorkloadMode>(initialMode);
   const [keyword, setKeyword] = useState("");
@@ -139,6 +142,7 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [logsError, setLogsError] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [terminalNotice, setTerminalNotice] = useState("");
+  const [terminalOpen, setTerminalOpen] = useState(false);
   const [logsNotice, setLogsNotice] = useState("");
 
   useEffect(() => {
@@ -389,25 +393,32 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
-  async function openTerminalPlaceholder() {
+  async function openTerminal() {
     if (!selectedName) return;
-    try {
-      const result = await createTerminalSession(selectedName, logContainer || undefined);
-      if (result.wsPath) {
-        const ttlHint =
-          result.ttlSeconds && result.expiresAt
-            ? `（TTL ${result.ttlSeconds}s，过期时间 ${result.expiresAt}）`
-            : result.ttlSeconds
-            ? `（TTL ${result.ttlSeconds}s）`
-            : "";
-        setTerminalNotice(`终端会话已创建${ttlHint}，可使用 WebSocket 地址：${result.wsPath}`);
-      } else {
-        setTerminalNotice(result.error || "terminal gateway not enabled");
-      }
-    } catch (err) {
-      setTerminalNotice(err instanceof Error ? err.message : "终端能力暂不可用");
-    }
+    setTerminalNotice("");
+    setTerminalOpen(true);
   }
+
+  const createTerminalWsSession = useCallback(async () => {
+    if (!selectedName) {
+      throw new Error("未选择 Pod");
+    }
+    const result = await createTerminalSession(selectedName, logContainer || undefined);
+    if (!result.wsPath) {
+      throw new Error(result.error || "terminal gateway not enabled");
+    }
+    const ttlHint =
+      result.ttlSeconds && result.expiresAt
+        ? `（TTL ${result.ttlSeconds}s，过期时间 ${result.expiresAt}）`
+        : result.ttlSeconds
+        ? `（TTL ${result.ttlSeconds}s）`
+        : "";
+    setTerminalNotice(`终端会话已创建${ttlHint}`);
+    const url = new URL(result.wsPath, window.location.origin);
+    url.searchParams.set("user", currentUser || "demo-user");
+    url.searchParams.set("role", currentRole || "readonly");
+    return { wsPath: `${url.pathname}${url.search}` };
+  }, [createTerminalSession, currentRole, currentUser, logContainer, selectedName]);
 
   async function copyLogs() {
     if (!rawLogsText) return;
@@ -702,11 +713,18 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => void openTerminalPlaceholder()}>打开终端</Button>
+          <Button onClick={() => void openTerminal()}>打开终端</Button>
           <Button onClick={downloadLogs} disabled={!rawLogsText}>导出日志</Button>
           <Button onClick={() => setLogsOpen(false)}>关闭</Button>
         </DialogActions>
       </Dialog>
+
+      <TerminalDialog
+        open={terminalOpen}
+        title={selectedName ? `Pod 终端 - ${selectedName}` : "Pod 终端"}
+        createSession={createTerminalWsSession}
+        onClose={() => setTerminalOpen(false)}
+      />
     </>
   );
 }

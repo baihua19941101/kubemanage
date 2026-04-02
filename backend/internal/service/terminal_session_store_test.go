@@ -50,6 +50,24 @@ func TestTerminalSessionStorePodMismatch(t *testing.T) {
 	}
 }
 
+func TestTerminalSessionStoreGetDoesNotConsume(t *testing.T) {
+	store := NewTerminalSessionStore(2 * time.Minute)
+	session := store.Create("pod-a", "container-a", "alice", "admin")
+
+	got, err := store.Get(session.ID, "pod-a")
+	if err != nil {
+		t.Fatalf("get should succeed: %v", err)
+	}
+	if got.ID != session.ID {
+		t.Fatalf("unexpected session id: got=%s want=%s", got.ID, session.ID)
+	}
+
+	_, err = store.Consume(session.ID, "pod-a")
+	if err != nil {
+		t.Fatalf("consume after get should still succeed: %v", err)
+	}
+}
+
 func TestTerminalSessionStoreTTL(t *testing.T) {
 	store := NewTerminalSessionStore(90 * time.Second)
 	if got := store.TTL(); got != 90*time.Second {

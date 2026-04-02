@@ -61,25 +61,40 @@ func (s *TerminalSessionStore) Create(podName, container, user, role string) Ter
 	return session
 }
 
+func (s *TerminalSessionStore) Get(id, podName string) (TerminalSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	session, err := s.getLocked(id, podName, now)
+	s.cleanupExpiredLocked(now)
+	return session, err
+}
+
 func (s *TerminalSessionStore) Consume(id, podName string) (TerminalSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now()
-	session, ok := s.sessions[id]
-	if !ok {
+	session, err := s.getLocked(id, podName, now)
+	if err != nil {
 		s.cleanupExpiredLocked(now)
-		return TerminalSession{}, ErrTerminalSessionNotFound
+		return TerminalSession{}, err
 	}
 	delete(s.sessions, id)
+	s.cleanupExpiredLocked(now)
+	return session, nil
+}
+
+func (s *TerminalSessionStore) getLocked(id, podName string, now time.Time) (TerminalSession, error) {
+	session, ok := s.sessions[id]
+	if !ok {
+		return TerminalSession{}, ErrTerminalSessionNotFound
+	}
 	if now.After(session.ExpiresAt) {
-		s.cleanupExpiredLocked(now)
 		return TerminalSession{}, ErrTerminalSessionExpired
 	}
 	if podName != "" && session.PodName != podName {
-		s.cleanupExpiredLocked(now)
 		return TerminalSession{}, ErrTerminalSessionNotFound
 	}
-	s.cleanupExpiredLocked(now)
 	return session, nil
 }
 

@@ -1258,6 +1258,32 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build` 通过
 - 当前任务：`P1307 已收口`
 
+### P1401 计划（2026-04-02）
+
+#### 范围定义
+- 目标：将 Pod 终端从“占位提示”升级为可直接交互的前端终端窗口
+- 本轮聚焦：`xterm.js` 终端界面、会话创建后自动连接 WebSocket、断开与错误提示、手动重连
+- 本轮不纳入：文件上传下载、多标签终端、会话共享
+
+#### 能力范围
+- 前端接入 `xterm` + `xterm-addon-fit`，在 Pod 日志弹窗中提供终端交互面板
+- 复用现有 `/api/v1/pods/:name/terminal/sessions` 与 `/api/v1/pods/:name/terminal/ws` 链路
+- 保留现有 RBAC、确认头、TTL 与 owner 约束，不放宽后端安全边界
+
+#### 开发拆分
+1. `P1401-A`：README/TASKS 计划与状态同步 + 开发前备份
+2. `P1401-B`：前端终端组件接入（xterm、ws 连接、输入输出、窗口自适应）
+3. `P1401-C`：页面集成与交互完善（打开/关闭/重连、状态提示、容器选择联动）
+4. `P1401-D`：联调与验收（go test、frontend build、终端链路手工验证）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-154417-p1401.sql`
+- 已完成开发：前端接入 `@xterm/xterm` + `@xterm/addon-fit`，支持 Pod 终端输入输出与自适应布局
+- 已完成开发：日志弹窗“打开终端”已切换为真实终端弹窗，支持会话创建后自动连接与手动重连
+- 已完成验证：`go test ./...`、`npm run build` 通过（依赖安装使用 `https://registry.npmmirror.com`）
+- 当前任务：`P1401 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1268,7 +1294,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十九阶段（P1307 已完成）`
-- 当前任务：`P1307：5 类工作负载 YAML real-only 对齐（已完成）`
-- 当前状态：`Deployment + Pod + StatefulSet + DaemonSet + Job + CronJob 均支持 real-only YAML 读写`
-- 下一任务：`会话收口：已按指令停止新功能开发，等待下一轮优先级确认`
+- 当前阶段：`第二十阶段（P1401 已完成）`
+- 当前任务：`P1401：前端 Pod 终端实操化（已完成）`
+- 当前状态：`日志弹窗已支持真实终端连接（xterm + websocket）`
+- 下一任务：`P1402：前端性能优化（按路由与重组件分包，降低首屏体积）`

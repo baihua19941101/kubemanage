@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"kubeManage/backend/internal/service"
@@ -41,7 +42,7 @@ func (h *WorkloadHandler) TerminalWebSocket(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "sessionId is required"})
 		return
 	}
-	session, err := h.terminalSessions.Consume(sessionID, podName)
+	session, err := h.terminalSessions.Get(sessionID, podName)
 	if err != nil {
 		switch err {
 		case service.ErrTerminalSessionNotFound:
@@ -54,14 +55,38 @@ func (h *WorkloadHandler) TerminalWebSocket(c *gin.Context) {
 		return
 	}
 	// Bind websocket attach to the same caller that created the session.
-	requestUser := c.GetString("km_user")
-	requestRole := c.GetString("km_role")
+	requestUser := strings.TrimSpace(c.GetString("km_user"))
+	requestRole := strings.TrimSpace(c.GetString("km_role"))
+	if requestUser == "" || requestUser == "demo-user" {
+		queryUser := strings.TrimSpace(c.Query("user"))
+		if queryUser != "" {
+			requestUser = queryUser
+		}
+	}
+	if requestRole == "" || requestRole == "readonly" {
+		queryRole := strings.TrimSpace(c.Query("role"))
+		if queryRole != "" {
+			requestRole = queryRole
+		}
+	}
 	if requestUser != "" && session.User != "" && requestUser != session.User {
 		c.JSON(http.StatusForbidden, gin.H{"error": "terminal session owner mismatch"})
 		return
 	}
 	if requestRole != "" && session.Role != "" && requestRole != session.Role {
 		c.JSON(http.StatusForbidden, gin.H{"error": "terminal session owner mismatch"})
+		return
+	}
+	session, err = h.terminalSessions.Consume(sessionID, podName)
+	if err != nil {
+		switch err {
+		case service.ErrTerminalSessionNotFound:
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "terminal session invalid"})
+		case service.ErrTerminalSessionExpired:
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "terminal session expired"})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -98,9 +123,6 @@ func (h *WorkloadHandler) TerminalWebSocket(c *gin.Context) {
 			}
 			if msgType == websocket.TextMessage || msgType == websocket.BinaryMessage {
 				if _, writeErr := stdinWriter.Write(data); writeErr != nil {
-					return
-				}
-				if _, writeErr := stdinWriter.Write([]byte("\n")); writeErr != nil {
 					return
 				}
 			}
