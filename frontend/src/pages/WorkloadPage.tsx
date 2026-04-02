@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import DetailDrawer from "../components/framework/DetailDrawer";
 import PageScaffold from "../components/framework/PageScaffold";
 import ResourceTable from "../components/framework/ResourceTable";
+import TerminalDialog from "../components/framework/TerminalDialog";
 import YamlDialog from "../components/framework/YamlDialog";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useWorkloadStore } from "../stores/useWorkloadStore";
@@ -139,6 +140,8 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
   const [logsError, setLogsError] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
   const [terminalNotice, setTerminalNotice] = useState("");
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [terminalWsPath, setTerminalWsPath] = useState("");
   const [logsNotice, setLogsNotice] = useState("");
 
   useEffect(() => {
@@ -389,11 +392,13 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
     }
   }
 
-  async function openTerminalPlaceholder() {
+  async function openTerminal() {
     if (!selectedName) return;
     try {
       const result = await createTerminalSession(selectedName, logContainer || undefined);
       if (result.wsPath) {
+        setTerminalWsPath(result.wsPath);
+        setTerminalOpen(true);
         const ttlHint =
           result.ttlSeconds && result.expiresAt
             ? `（TTL ${result.ttlSeconds}s，过期时间 ${result.expiresAt}）`
@@ -702,11 +707,18 @@ export default function WorkloadPage({ initialMode = "deployments", showModeSwit
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => void openTerminalPlaceholder()}>打开终端</Button>
+          <Button onClick={() => void openTerminal()}>打开终端</Button>
           <Button onClick={downloadLogs} disabled={!rawLogsText}>导出日志</Button>
           <Button onClick={() => setLogsOpen(false)}>关闭</Button>
         </DialogActions>
       </Dialog>
+
+      <TerminalDialog
+        open={terminalOpen}
+        title={selectedName ? `Pod 终端 - ${selectedName}` : "Pod 终端"}
+        wsPath={terminalWsPath}
+        onClose={() => setTerminalOpen(false)}
+      />
     </>
   );
 }
