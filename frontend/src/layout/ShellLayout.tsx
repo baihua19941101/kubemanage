@@ -24,6 +24,7 @@ import WorkloadIcon from "@mui/icons-material/ViewQuilt";
 import ConfigIcon from "@mui/icons-material/Tune";
 import StorageIcon from "@mui/icons-material/Storage";
 import SecurityIcon from "@mui/icons-material/Security";
+import PolicyIcon from "@mui/icons-material/Gavel";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -93,15 +94,20 @@ const navSections: NavSection[] = [
     ]
   },
   {
-    key: "security",
-    label: "Security",
-    icon: <SecurityIcon fontSize="small" />,
+    key: "policy",
+    label: "Policy",
+    icon: <PolicyIcon fontSize="small" />,
     children: [
       { label: "LimitRanges", path: "/policies/limitranges" },
       { label: "ResourceQuotas", path: "/policies/resourcequotas" },
-      { label: "NetworkPolicies", path: "/policies/networkpolicies" },
-      { label: "权限与审计", path: "/auth-audit" }
+      { label: "NetworkPolicies", path: "/policies/networkpolicies" }
     ]
+  },
+  {
+    key: "security",
+    label: "Security",
+    icon: <SecurityIcon fontSize="small" />,
+    children: [{ label: "权限与审计", path: "/auth-audit" }]
   }
 ];
 

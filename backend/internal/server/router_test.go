@@ -550,6 +550,43 @@ func TestResourceEndpoints(t *testing.T) {
 	if updateNPDevW.Code != http.StatusNoContent {
 		t.Fatalf("operator update dev networkpolicy should pass: %d body=%s", updateNPDevW.Code, updateNPDevW.Body.String())
 	}
+
+	deleteLimitRangeDenyReq := requestWithRole(http.MethodDelete, "/api/v1/limitranges/compute-defaults", "", "operator")
+	deleteLimitRangeDenyW := httptest.NewRecorder()
+	r.ServeHTTP(deleteLimitRangeDenyW, deleteLimitRangeDenyReq)
+	if deleteLimitRangeDenyW.Code != http.StatusForbidden {
+		t.Fatalf("operator delete default limitrange should be forbidden: %d body=%s", deleteLimitRangeDenyW.Code, deleteLimitRangeDenyW.Body.String())
+	}
+
+	deleteLimitRangeDevReq := requestWithRole(http.MethodDelete, "/api/v1/limitranges/dev-container-limits", "", "operator")
+	deleteLimitRangeDevW := httptest.NewRecorder()
+	r.ServeHTTP(deleteLimitRangeDevW, deleteLimitRangeDevReq)
+	if deleteLimitRangeDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator delete dev limitrange should pass: %d body=%s", deleteLimitRangeDevW.Code, deleteLimitRangeDevW.Body.String())
+	}
+
+	deleteRQDevReq := requestWithRole(http.MethodDelete, "/api/v1/resourcequotas/dev-quota", "", "operator")
+	deleteRQDevW := httptest.NewRecorder()
+	r.ServeHTTP(deleteRQDevW, deleteRQDevReq)
+	if deleteRQDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator delete dev resourcequota should pass: %d body=%s", deleteRQDevW.Code, deleteRQDevW.Body.String())
+	}
+
+	deleteNPDevReq := requestWithRole(http.MethodDelete, "/api/v1/networkpolicies/allow-web-to-api", "", "operator")
+	deleteNPDevW := httptest.NewRecorder()
+	r.ServeHTTP(deleteNPDevW, deleteNPDevReq)
+	if deleteNPDevW.Code != http.StatusNoContent {
+		t.Fatalf("operator delete dev networkpolicy should pass: %d body=%s", deleteNPDevW.Code, deleteNPDevW.Body.String())
+	}
+
+	deleteWithoutConfirmReq, _ := http.NewRequest(http.MethodDelete, "/api/v1/networkpolicies/default-deny-all", nil)
+	deleteWithoutConfirmReq.Header.Set("X-User-Role", "admin")
+	deleteWithoutConfirmReq.Header.Set("X-User", "tester")
+	deleteWithoutConfirmW := httptest.NewRecorder()
+	r.ServeHTTP(deleteWithoutConfirmW, deleteWithoutConfirmReq)
+	if deleteWithoutConfirmW.Code != http.StatusPreconditionRequired {
+		t.Fatalf("delete without confirm should be 428: %d body=%s", deleteWithoutConfirmW.Code, deleteWithoutConfirmW.Body.String())
+	}
 }
 
 func TestRBACAndAudit(t *testing.T) {

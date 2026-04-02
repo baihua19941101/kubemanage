@@ -562,10 +562,10 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 ### 前端重构设计（Rancher 风格）
 
 - 布局：`ShellLayout`（`TopBar` + `SideNav` + `ContentArea`）
-- 导航：按域分组（Cluster / Workloads / Service Discovery / Storage / Security / Audit）
+- 导航：按域分组（Cluster / Workloads / Service Discovery / Storage / Policy / Security）
 - 页面容器：统一 `PageHeader + Toolbar + TableArea + DetailPanel`
 - 状态：路由状态统一由 `react-router` 管理，业务状态保持 `Zustand`
-- 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Service Discovery / Storage / Security`，点击一级菜单展开二级子菜单
+- 左侧导航采用两级结构：一级菜单 `Cluster / Workloads / Service Discovery / Storage / Policy / Security`，点击一级菜单展开二级子菜单
 - Workloads 二级菜单：`Deployment / Pod / StatefulSet / DaemonSet / Job / CronJob`
 - Service Discovery 二级菜单：`Service / Ingress / HPA`
 - Storage 二级菜单：`PersistentVolumes / PersistentVolumeClaims / StorageClasses / ConfigMaps / Secrets`
@@ -1054,6 +1054,33 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 - 已完成验证：`go test ./...`、`npm run build`、`scripts/p1202_policy_write_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
 - 当前任务：`P1202 已收口`
 
+### P1203 计划（2026-04-02）
+
+#### 范围定义
+- 目标：补齐 Policy 删除能力第一版，完成 Policy 读写删基础闭环
+- 覆盖资源：`LimitRange / ResourceQuota / NetworkPolicy`
+- 本轮不纳入：批量删除、回收站、审批流
+
+#### 能力范围
+- 后端新增 Policy 删除接口
+- 前端 Policy 页面新增删除操作与二次确认
+- 继续沿用命名空间作用域权限、确认头、审计记录机制
+
+#### 开发拆分
+1. `P1203-A`：README/TASKS 计划与状态同步
+2. `P1203-B`：后端 Policy 删除接口与路由接入
+3. `P1203-C`：前端 Policy 删除交互与状态刷新
+4. `P1203-D`：联调与验收（go test、frontend build、policy 删除冒烟脚本）
+
+#### 当前状态
+- 状态：`已完成`
+- 已完成前置：数据库备份 `backups/kubemanage-20260402-111032-p1203.sql`
+- 已完成开发：`P1203-B` 后端 Policy 删除接口（LimitRange/ResourceQuota/NetworkPolicy）
+- 已完成开发：`P1203-C` 前端 Policy 删除交互（删除确认与刷新）
+- 已完成验证：`go test ./...`、`npm run build`、`scripts/p1203_policy_delete_smoke_test.sh` 通过（`GOPROXY=https://goproxy.cn,direct`）
+- 已完成需求调整：左侧导航新增独立 `Policy` 菜单承载三类策略，`Security` 菜单仅保留“权限与审计”
+- 当前任务：`P1203 已收口`
+
 ### 第二阶段任务清单（Rancher 风格重构）
 
 1. `R1`：壳层重构（左侧菜单 + 顶栏 + 路由骨架）
@@ -1064,7 +1091,7 @@ bash scripts/p1101_token_lifecycle_smoke_test.sh
 
 ## 任务状态
 
-- 当前阶段：`第十二阶段（P1202 已完成）`
-- 当前任务：`P1202：Policy YAML 写能力第一版（已完成）`
-- 当前状态：`Policy 读写闭环已交付并通过联调验收`
+- 当前阶段：`第十二阶段（P1203 已完成）`
+- 当前任务：`P1203：Policy 删除能力第一版（已完成）`
+- 当前状态：`Policy 读写删基础闭环已交付并通过联调验收`
 - 下一任务：`与你确认下一阶段优先级`

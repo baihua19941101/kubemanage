@@ -769,6 +769,57 @@ func (h *ResourceHandler) UpdateNetworkPolicyYAML(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *ResourceHandler) DeleteLimitRange(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.DeleteLimitRange(c.Request.Context(), name); err != nil {
+			handleResourceDeleteError(c, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.DeleteLimitRange(name); err != nil {
+		handleResourceDeleteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ResourceHandler) DeleteResourceQuota(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.DeleteResourceQuota(c.Request.Context(), name); err != nil {
+			handleResourceDeleteError(c, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.DeleteResourceQuota(name); err != nil {
+		handleResourceDeleteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h *ResourceHandler) DeleteNetworkPolicy(c *gin.Context) {
+	name := c.Param("name")
+	if h.adapterMode != "mock" && h.liveResourceSvc != nil {
+		if err := h.liveResourceSvc.DeleteNetworkPolicy(c.Request.Context(), name); err != nil {
+			handleResourceDeleteError(c, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+	if err := h.resourceSvc.DeleteNetworkPolicy(name); err != nil {
+		handleResourceDeleteError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func handleResourceYAMLUpdateError(c *gin.Context, err error, kind string) {
 	msg := err.Error()
 	switch {
@@ -783,6 +834,18 @@ func handleResourceYAMLUpdateError(c *gin.Context, err error, kind string) {
 			c.JSON(http.StatusNotFound, gin.H{"error": msg})
 			return
 		}
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	}
+}
+
+func handleResourceDeleteError(c *gin.Context, err error) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "not found:"):
+		c.JSON(http.StatusNotFound, gin.H{"error": msg})
+	case strings.Contains(msg, "failed:"):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
+	default:
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": msg})
 	}
 }

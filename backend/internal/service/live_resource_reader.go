@@ -707,6 +707,66 @@ func (r *LiveResourceReader) UpdateNetworkPolicyYAML(ctx context.Context, name, 
 	return nil
 }
 
+func (r *LiveResourceReader) DeleteLimitRange(ctx context.Context, name string) error {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.LimitRangeNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if err := clientset.CoreV1().LimitRanges(namespace).Delete(timeoutCtx, name, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("limitrange not found: %s", name)
+		}
+		return fmt.Errorf("delete limitrange failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) DeleteResourceQuota(ctx context.Context, name string) error {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.ResourceQuotaNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if err := clientset.CoreV1().ResourceQuotas(namespace).Delete(timeoutCtx, name, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("resourcequota not found: %s", name)
+		}
+		return fmt.Errorf("delete resourcequota failed: %w", err)
+	}
+	return nil
+}
+
+func (r *LiveResourceReader) DeleteNetworkPolicy(ctx context.Context, name string) error {
+	clientset, err := r.buildClientset(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err := r.NetworkPolicyNamespace(ctx, name)
+	if err != nil {
+		return err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, k8sAdapterTimeout)
+	defer cancel()
+	if err := clientset.NetworkingV1().NetworkPolicies(namespace).Delete(timeoutCtx, name, metav1.DeleteOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("networkpolicy not found: %s", name)
+		}
+		return fmt.Errorf("delete networkpolicy failed: %w", err)
+	}
+	return nil
+}
+
 func (r *LiveResourceReader) buildClientset(ctx context.Context) (*kubernetes.Clientset, error) {
 	if r.repo == nil {
 		return nil, ErrNoActiveClusterConnection

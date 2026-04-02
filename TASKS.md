@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 阶段：第十二阶段（P1202 已完成）
+- 阶段：第十二阶段（P1203 已完成）
 - 更新时间：2026-04-02
 
 ## 任务列表
@@ -49,6 +49,7 @@
 | P1101 | 第十一阶段任务1：权限体系深化第一版（Token 生命周期） | 已完成 | 已完成 token 会话列表、撤销与登出全部能力并接入前端权限页 |
 | P1201 | 第十二阶段任务1：Policy 管理第一版能力 | 已完成 | 已完成 LimitRange/ResourceQuota/NetworkPolicy 列表详情与 YAML 查看/下载、前端页面路由与冒烟验收 |
 | P1202 | 第十二阶段任务2：Policy YAML 写能力第一版 | 已完成 | 已完成 Policy YAML 保存接口、前端编辑保存交互与写入验收 |
+| P1203 | 第十二阶段任务3：Policy 删除能力第一版 | 已完成 | 已完成 3 类 Policy 删除接口、前端删除交互与联调验收 |
 | R101 | R1：壳层重构（左侧菜单+顶栏+路由骨架） | 已完成 | 已完成 ShellLayout、左侧菜单、顶部栏与路由切换 |
 | R102 | R2：通用资源页框架重构 | 已完成 | 已完成通用页面组件并迁移 Cluster 页示范 |
 | R103 | R3：模块迁移到新框架 | 已完成 | 已完成 Namespace/Workload/Resource/AuthAudit 迁移 |
@@ -186,6 +187,12 @@
 | T147 | P1202-B：后端 Policy YAML 写接口 | 已完成 | 已新增 3 类 Policy YAML 保存接口并接入路由、权限、确认头与作用域校验 |
 | T148 | P1202-C：前端 Policy YAML 编辑保存交互 | 已完成 | PolicyPage 已支持 YAML 查看/编辑/保存，按角色控制保存能力 |
 | T149 | P1202-D：联调与验收 | 已完成 | 已通过 go test ./...、frontend build、scripts/p1202_policy_write_smoke_test.sh |
+| T150 | P1203 前置：数据库备份与任务启动 | 已完成 | 已备份 backups/kubemanage-20260402-111032-p1203.sql，进入 P1203 开发 |
+| T151 | P1203-A：README/TASKS 计划与状态同步 | 已完成 | 已同步 P1203 范围、拆分与当前状态（进行中） |
+| T152 | P1203-B：后端 Policy 删除接口 | 已完成 | 已新增 3 类 Policy 删除接口并接入作用域权限、确认头与路由测试 |
+| T153 | P1203-C：前端 Policy 删除交互 | 已完成 | PolicyPage 已新增删除按钮、确认弹窗与删除后刷新 |
+| T154 | P1203-D：联调与验收 | 已完成 | 已通过 go test ./...、frontend build、scripts/p1203_policy_delete_smoke_test.sh |
+| T155 | 导航调整：Policy 与 Security 菜单分组修正 | 已完成 | 已将 LimitRange/ResourceQuota/NetworkPolicy 归入 Policy 菜单，Security 仅保留权限与审计 |
 
 ## 完成记录
 
@@ -403,3 +410,10 @@
 - 2026-04-02：完成 T148（前端 PolicyPage 新增 YAML 编辑保存交互，readonly 仅查看）
 - 2026-04-02：完成 T149（联调验收通过：go test ./...、npm run build、scripts/p1202_policy_write_smoke_test.sh）
 - 2026-04-02：完成 P1202（Policy YAML 写能力第一版交付完成）
+- 2026-04-02：完成 T150（P1203 开发前数据库备份：backups/kubemanage-20260402-111032-p1203.sql）
+- 2026-04-02：完成 T151（同步 README/TASKS：P1203 范围、拆分与状态）
+- 2026-04-02：完成 T152（后端新增 Policy 删除接口并接入权限/确认头与路由测试）
+- 2026-04-02：完成 T153（前端 PolicyPage 新增删除交互与删除后状态刷新）
+- 2026-04-02：完成 T154（联调验收通过：go test ./...、npm run build、scripts/p1203_policy_delete_smoke_test.sh）
+- 2026-04-02：完成 P1203（Policy 删除能力第一版交付完成）
+- 2026-04-02：完成 T155（菜单分组修正：Policy 独立承载三类策略，Security 仅保留权限与审计）
